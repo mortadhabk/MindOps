@@ -1,0 +1,203 @@
+{
+  "info": {
+    "name": "ai-agent-poc",
+    "description": "Collection de test pour l'API du POC agentique modulaire. Epic 0 (health) et Epic 1 (moteur RAG). Utiliser l'environnement 'ai-agent-poc — local' (baseUrl=http://localhost:8000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" }
+  ],
+  "item": [
+    {
+      "name": "Epic 0 - Infra",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));",
+                  "pm.test('a un header X-Request-ID', () => pm.response.to.have.header('X-Request-ID'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Epic 1 - RAG",
+      "item": [
+        {
+          "name": "1. Ingest - ticket paiement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"manuel\",\n  \"content\": \"Le service de paiement echoue quand le montant depasse 10 000 euros. La cause identifiee est un depassement du champ DECIMAL en base de donnees.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/rag/ingest", "host": ["{{baseUrl}}"], "path": ["rag", "ingest"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('ingestion complete', () => pm.expect(body.status).to.eql('complete'));",
+                  "pm.test('au moins un chunk cree', () => pm.expect(body.chunks_created).to.be.above(0));",
+                  "pm.environment.set('payment_document_id', body.document_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Ingest - texte sans rapport (chat)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"manuel\",\n  \"content\": \"Le chat dort sur le canape toute la journee et ne se reveille que pour manger.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/rag/ingest", "host": ["{{baseUrl}}"], "path": ["rag", "ingest"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('ingestion complete', () => pm.expect(body.status).to.eql('complete'));",
+                  "pm.environment.set('cat_document_id', body.document_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Ingest - rejet contenu vide (422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"manuel\",\n  \"content\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/rag/ingest", "host": ["{{baseUrl}}"], "path": ["rag", "ingest"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('rejete avec 422 (validation Pydantic)', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Search - question reformulee (paiement)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/rag/search?q=pourquoi le paiement ne fonctionne pas au-dela de 10000 euros&top_k=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["rag", "search"],
+              "query": [
+                { "key": "q", "value": "pourquoi le paiement ne fonctionne pas au-dela de 10000 euros" },
+                { "key": "top_k", "value": "3" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('au moins un resultat', () => pm.expect(body.results.length).to.be.above(0));",
+                  "pm.test('le bon document remonte en premier', () => {",
+                  "  const expected = Number(pm.environment.get('payment_document_id'));",
+                  "  pm.expect(body.results[0].document_id).to.eql(expected);",
+                  "});",
+                  "pm.test('score de similarite eleve (> 0.5) malgre des mots differents', () => {",
+                  "  pm.expect(body.results[0].score).to.be.above(0.5);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Search - question reformulee (chat)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/rag/search?q=est-ce que mon chat aime faire la sieste&top_k=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["rag", "search"],
+              "query": [
+                { "key": "q", "value": "est-ce que mon chat aime faire la sieste" },
+                { "key": "top_k", "value": "3" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('le document chat remonte en premier, pas celui du paiement', () => {",
+                  "  const expected = Number(pm.environment.get('cat_document_id'));",
+                  "  pm.expect(body.results[0].document_id).to.eql(expected);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Search - top_k hors bornes (422)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/rag/search?q=test&top_k=999",
+              "host": ["{{baseUrl}}"],
+              "path": ["rag", "search"],
+              "query": [
+                { "key": "q", "value": "test" },
+                { "key": "top_k", "value": "999" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('rejete avec 422 (top_k > 50)', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

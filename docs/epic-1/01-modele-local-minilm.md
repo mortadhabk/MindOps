@@ -4,12 +4,12 @@
 
 Ce document formalise le choix du **modèle local (MiniLM)** comme fournisseur d'embeddings pour l'Epic 1 (la décision tranchée dans la [section 12 du guide précédent](00-guide-debutant-rag.md#12-décision-retenue--quel-fournisseur-dembeddings)), et détaille **toutes les classes Python qui seront écrites** pour l'implémenter — leur code complet, ligne par ligne, avant que le développement ne commence réellement. C'est la spécification qui sera suivie au moment d'écrire `app/rag/embeddings/`.
 
-Rien n'est encore codé dans `app/` à ce stade — ce document est la spec, pas l'implémentation.
+> **Mise à jour post-implémentation** : le code a depuis été écrit (voir [02-modeles-et-ingestion.md](02-modeles-et-ingestion.md)). En le testant avec de vraies phrases françaises, `all-MiniLM-L6-v2` — le modèle initialement envisagé dans ce document — s'est révélé mal adapté au français (voir section 2). Le modèle réellement retenu est **`paraphrase-multilingual-MiniLM-L12-v2`**, avec la **même dimension (384)** — aucun autre choix de ce document n'a changé. Les deux modèles sont décrits ci-dessous pour garder la trace de cette décision et de ce qui l'a motivée.
 
 ## Sommaire
 
 1. [Clarification de vocabulaire : LLM vs modèle d'embedding](#1-clarification-de-vocabulaire--llm-vs-modèle-dembedding)
-2. [Qu'est-ce que MiniLM (`all-MiniLM-L6-v2`)](#2-quest-ce-que-minilm-all-minilm-l6-v2)
+2. [Qu'est-ce que MiniLM, et pourquoi `all-MiniLM-L6-v2` n'est pas le modèle retenu](#2-quest-ce-que-minilm-all-minilm-l6-v2-et-pourquoi-ce-nest-pas-le-modèle-retenu)
 3. [La bibliothèque `sentence-transformers`](#3-la-bibliothèque-sentence-transformers)
 4. [Architecture logicielle retenue](#4-architecture-logicielle-retenue)
 5. [Les classes, en détail](#5-les-classes-en-détail)
@@ -32,15 +32,15 @@ Avant d'aller plus loin, une précision qui évite une confusion fréquente : **
 | Rôle | Transforme un texte en vecteur de nombres | Génère une réponse en langage naturel |
 | Entrée | Un texte (une phrase, un fragment) | Une conversation (question + contexte + historique) |
 | Sortie | Un vecteur (ex. 384 nombres) | Du texte rédigé |
-| Exemple dans ce projet | **MiniLM** (`all-MiniLM-L6-v2`, local) | Claude, via `LLM_API_KEY`/`LLM_MODEL` dans `Settings` |
+| Exemple dans ce projet | **MiniLM** (`paraphrase-multilingual-MiniLM-L12-v2`, local) | Claude, via `LLM_API_KEY`/`LLM_MODEL` dans `Settings` |
 | Utilisé par | `app/rag/` (Epic 1, ce document) | `app/agent/llm_client.py` (Epic 3, pas encore développé) |
 | Analogie | Un système qui range des livres dans une bibliothèque par thème, sans les "comprendre" au sens conversationnel | Le bibliothécaire qui lit les livres trouvés et rédige une réponse |
 
 MiniLM ne "répond" jamais à une question et ne rédige aucune phrase — il ne fait que produire un vecteur à partir d'un texte. C'est un modèle beaucoup plus petit et spécialisé qu'un LLM comme Claude ou GPT, et il tourne très bien sur un CPU de machine de développement, sans carte graphique.
 
-## 2. Qu'est-ce que MiniLM (`all-MiniLM-L6-v2`)
+## 2. Qu'est-ce que MiniLM (`all-MiniLM-L6-v2`), et pourquoi ce n'est pas le modèle retenu
 
-`all-MiniLM-L6-v2` est un modèle publié par le projet [sentence-transformers](https://www.sbert.net/) (UKP Lab), disponible librement sur le Hugging Face Hub sous le nom `sentence-transformers/all-MiniLM-L6-v2`.
+`all-MiniLM-L6-v2` est un modèle publié par le projet [sentence-transformers](https://www.sbert.net/) (UKP Lab), disponible librement sur le Hugging Face Hub sous le nom `sentence-transformers/all-MiniLM-L6-v2`. C'est le modèle MiniLM le plus connu et le plus utilisé dans les tutoriels — d'où le choix initial de ce document.
 
 | Caractéristique | Valeur |
 |---|---|
@@ -52,9 +52,50 @@ MiniLM ne "répond" jamais à une question et ne rédige aucune phrase — il ne
 | Longueur maximale d'entrée | 256 tokens (au-delà, le texte est tronqué silencieusement — voir section 7) |
 | Licence | Apache 2.0 (utilisation commerciale libre) |
 | Entraînement | Plus d'un milliard de paires de phrases (apprentissage contrastif : rapprocher les paires similaires, éloigner les paires dissimilaires) |
-| Usage visé | Similarité sémantique, recherche, clustering — exactement le besoin de l'US-104 |
+| Langue d'entraînement | **Anglais quasi exclusivement** |
 
-**"Mini" et "distillé"** signifie que ce modèle a été entraîné à imiter le comportement d'un modèle plus gros (un processus appelé *distillation*), pour obtenir l'essentiel de la qualité sémantique avec une fraction du poids et du temps de calcul. Concrètement : encoder une phrase courte prend quelques millisecondes sur un CPU de laptop, sans configuration particulière — largement suffisant pour un POC qui ingère et interroge un volume modeste de documents.
+**"Mini" et "distillé"** signifie que ce modèle a été entraîné à imiter le comportement d'un modèle plus gros (un processus appelé *distillation*), pour obtenir l'essentiel de la qualité sémantique avec une fraction du poids et du temps de calcul. Concrètement : encoder une phrase courte prend quelques millisecondes sur un CPU de laptop, sans configuration particulière.
+
+### Le problème découvert en le testant sur du français
+
+Le corpus d'entraînement de `all-MiniLM-L6-v2` est presque exclusivement anglophone. Testé sur de vraies phrases françaises (celles-là même utilisées en exemple dans le [guide RAG](00-guide-debutant-rag.md#7-calcul-réel-de-similarité-cosinus-pas-à-pas)), le modèle sépare mal les phrases proches en sens des phrases sans rapport :
+
+| Paire de phrases | Similarité cosinus (`all-MiniLM-L6-v2`) |
+|---|---|
+| "Le service de paiement échoue" / "La transaction de paiement plante" (sens proche) | **0,488** |
+| "Le service de paiement échoue" / "Le café est excellent ce matin" (sens sans rapport) | **0,447** |
+
+Un écart de 0,04 entre une paraphrase et une phrase totalement étrangère est inutilisable : un seuil de similarité (section 7 du guide RAG, et `RAG_SIMILARITY_THRESHOLD` dans la config) ne peut pas distinguer les deux, puisqu'ils obtiennent quasiment le même score. Un projet où les documents (issues GitHub, tickets) seront très probablement en français ne peut pas se reposer sur un modèle qui ne "comprend" pas vraiment le français.
+
+### Le modèle retenu : `paraphrase-multilingual-MiniLM-L12-v2`
+
+Toujours dans la famille MiniLM (12 couches cette fois, "L12"), mais entraîné sur des paires de phrases parallèles dans plus de 50 langues, dont le français. Mêmes phrases, mêmes calculs :
+
+| Paire de phrases | Similarité cosinus (`paraphrase-multilingual-MiniLM-L12-v2`) |
+|---|---|
+| "Le service de paiement échoue" / "La transaction de paiement plante" (sens proche) | **0,578** |
+| "Le service de paiement échoue" / "Le café est excellent ce matin" (sens sans rapport) | **0,044** |
+
+Un écart net et exploitable. Un deuxième couple de phrases, plus proches lexicalement, confirme l'écart :
+
+| Paire de phrases | `all-MiniLM-L6-v2` | `paraphrase-multilingual-MiniLM-L12-v2` |
+|---|---|---|
+| "Erreur 500 sur le serveur de facturation" / "Le serveur de facturation renvoie une erreur 500" (paraphrase) | 0,956 | 0,809 |
+| "Erreur 500 sur le serveur de facturation" / "Il pleut beaucoup à Paris aujourd'hui" (sans rapport) | 0,440 | 0,099 |
+
+| Caractéristique de `paraphrase-multilingual-MiniLM-L12-v2` | Valeur |
+|---|---|
+| Architecture | Distillé d'un modèle multilingue (base `Multilingual-MiniLM-L12`, Microsoft), 12 couches |
+| Dimension du vecteur produit | **384** — identique à `all-MiniLM-L6-v2`, aucun impact sur `Vector(384)` (section 5.5) ni sur les migrations |
+| Langues | Plus de 50, dont le français |
+| Licence | Apache 2.0 |
+| Coût | Un peu plus lourd que la version 6 couches (12 couches à traverser au lieu de 6), toujours largement adapté à un CPU de développement pour un volume de POC |
+
+C'est ce nom (`paraphrase-multilingual-MiniLM-L12-v2`) qui est la valeur par défaut réelle de `LocalMiniLMEmbeddingProvider` et de `Settings.embedding_model` — voir section 5.
+
+### La leçon de méthode
+
+Cette correction illustre exactement pourquoi l'US-103 exige que l'appel au modèle soit *"isolé dans une fonction facilement remplaçable"* (section 4) : le changement s'est fait en modifiant **une seule ligne** (`model_name` par défaut dans `LocalMiniLMEmbeddingProvider.__init__`, plus la valeur par défaut dans `Settings`), sans toucher à `ingestion.py`, `retriever.py`, ni à aucune migration — la dimension étant restée 384, aucune donnée déjà ingérée n'aurait même eu besoin d'être régénérée si l'application avait déjà été en production à ce moment-là.
 
 ## 3. La bibliothèque `sentence-transformers`
 
@@ -63,7 +104,7 @@ C'est la bibliothèque Python qui charge le modèle et expose une API simple pou
 ```python
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 vectors = model.encode(["Le paiement échoue", "La transaction plante"])
 # vectors est un numpy.ndarray de forme (2, 384)
 ```
@@ -75,7 +116,7 @@ Ce qu'elle fait pour vous, en une seule ligne (`model.encode(...)`) :
 3. **Pooling** : combine les vecteurs de tous les tokens d'une phrase en **un seul** vecteur de 384 valeurs (moyenne pondérée par l'attention — le détail exact importe peu pour l'usage qu'on en fait).
 4. **Normalisation optionnelle** : ramène le vecteur à une longueur de 1 (voir encadré plus bas).
 
-Au premier appel à `SentenceTransformer("all-MiniLM-L6-v2")`, la bibliothèque télécharge le modèle depuis le Hugging Face Hub et le met en cache localement (par défaut dans `~/.cache/huggingface`) — les appels suivants réutilisent ce cache, aucun réseau n'est nécessaire ensuite. Voir la [section 9](#9-docker--cache-du-modèle-et-taille-dimage) pour l'impact en conteneur.
+Au premier appel à `SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")`, la bibliothèque télécharge le modèle depuis le Hugging Face Hub et le met en cache localement (par défaut dans `~/.cache/huggingface`) — les appels suivants réutilisent ce cache, aucun réseau n'est nécessaire ensuite. Voir la [section 9](#9-docker--cache-du-modèle-et-taille-dimage) pour l'impact en conteneur.
 
 ### Pourquoi normaliser les vecteurs (`normalize_embeddings=True`)
 
@@ -163,7 +204,7 @@ from app.rag.embeddings.base import EmbeddingProvider
 class LocalMiniLMEmbeddingProvider(EmbeddingProvider):
     dimension = 384
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
+    def __init__(self, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2") -> None:
         self._model = SentenceTransformer(model_name)
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
@@ -232,7 +273,9 @@ Nouveaux champs, ajoutés à la classe `Settings` existante (voir [03-configurat
 
 ```python
 embedding_provider: str = Field(default="local", alias="EMBEDDING_PROVIDER")
-embedding_model: str = Field(default="all-MiniLM-L6-v2", alias="EMBEDDING_MODEL")
+embedding_model: str = Field(
+    default="paraphrase-multilingual-MiniLM-L12-v2", alias="EMBEDDING_MODEL"
+)
 ```
 
 Remarquez qu'il n'y a **pas** de champ `embedding_dimension` dans `Settings` : la dimension (384) est une propriété du *code* (`LocalMiniLMEmbeddingProvider.dimension`), pas de la *configuration* — elle ne doit pas pouvoir être changée indépendamment du modèle réellement chargé (changer `EMBEDDING_DIMENSION=1536` dans `.env` sans changer de modèle produirait une incohérence silencieuse). C'est un choix delibéré : une seule source de vérité pour la dimension, celle que le provider déclare lui-même.
@@ -364,7 +407,7 @@ L'ajout de `torch` + `transformers` va significativement alourdir l'image `api` 
 Par défaut, le modèle est mis en cache dans `~/.cache/huggingface` **à l'intérieur du conteneur**. Sans précaution, ce cache disparaît à chaque fois que l'image est reconstruite, et le modèle est re-téléchargé au premier démarrage. Deux options, dans `Dockerfile` :
 
 ```dockerfile
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+RUN uv run --no-sync python -c "from app.rag.embeddings import get_embedding_provider; get_embedding_provider()"
 ```
 
 Ajoutée après `uv sync`, cette ligne télécharge et met le modèle en cache **au moment du build de l'image**, une fois pour toutes — le conteneur démarre alors instantanément, sans dépendre du réseau au premier lancement. C'est l'option recommandée ici : reproductible, pas de surprise réseau au démarrage.
@@ -378,7 +421,7 @@ Deux nouvelles variables, ajoutées à la section existante (voir [03-configurat
 ```dotenv
 # Embeddings (Epic 1 — RAG)
 EMBEDDING_PROVIDER=local
-EMBEDDING_MODEL=all-MiniLM-L6-v2
+EMBEDDING_MODEL=paraphrase-multilingual-MiniLM-L12-v2
 ```
 
 Pas de variable pour la dimension (384) — voir la justification en section 5.4.

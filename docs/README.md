@@ -24,10 +24,13 @@ Documentation complète de ce qui a été mis en place pour le Sprint 1 (US-001 
 
 ### Epic 1 — Moteur RAG
 
-Le code n'existe pas encore. Avant de commencer à développer :
+US-101 à US-107 implémentées (`app/rag/`). Avant/pendant la lecture du code :
 
-- [Comprendre le RAG avant de coder](epic-1/00-guide-debutant-rag.md) ([version PDF imprimable](epic-1/guide-debutant-rag.pdf)) — RAG, exemples réels (ChatGPT, Copilot, Perplexity, Glean...), embeddings, chunking, calcul de similarité cosinus pas à pas, pgvector, glossaire, mapping user story → fichier
-- [Modèle d'embedding local — MiniLM](epic-1/01-modele-local-minilm.md) ([version PDF imprimable](epic-1/modele-local-minilm.pdf)) — décision retenue (modèle local), LLM vs modèle d'embedding, toutes les classes Python détaillées (`EmbeddingProvider`, `LocalMiniLMEmbeddingProvider`, fabrique, fake de test), diagrammes de classes/séquence, impact Docker
+0. [Comprendre le RAG avant de coder](epic-1/00-guide-debutant-rag.md) ([PDF](epic-1/guide-debutant-rag.pdf)) — RAG, exemples réels (ChatGPT, Copilot, Perplexity, Glean...), embeddings, chunking, calcul de similarité cosinus pas à pas, pgvector, glossaire, mapping user story → fichier
+1. [Modèle d'embedding local — MiniLM](epic-1/01-modele-local-minilm.md) ([PDF](epic-1/modele-local-minilm.pdf)) — LLM vs modèle d'embedding, toutes les classes Python (`EmbeddingProvider`, `LocalMiniLMEmbeddingProvider`, fabrique, fake de test), **mise à jour post-implémentation** : correction du modèle (anglophone → multilingue) après test sur du vrai français
+2. [Modèles et ingestion](epic-1/02-modeles-et-ingestion.md) — `Document`/`Chunk` (US-101), `chunk_text` et son choix de découper par mots plutôt que par vrais tokens (US-102), pipeline d'ingestion et statut `partial` (US-103)
+3. [Recherche et API](epic-1/03-recherche-et-api.md) — `vector_store.py`, `retriever.search` et le seuil de similarité (US-104), schémas Pydantic, `POST /rag/ingest` / `GET /rag/search` (US-105, US-106)
+4. [Tests](epic-1/04-tests.md) — `FakeEmbeddingProvider`, un bug corrigé dans la fixture `db_session` de l'Epic 0 (les `commit()` n'étaient pas annulés), tous les tests écrits (US-107)
 
 ### Epics suivants
 

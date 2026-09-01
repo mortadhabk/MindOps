@@ -27,6 +27,15 @@ class Settings(BaseSettings):
 
     api_key: str | None = Field(default=None, alias="API_KEY")
 
+    embedding_provider: str = Field(default="local", alias="EMBEDDING_PROVIDER")
+    embedding_model: str = Field(
+        default="paraphrase-multilingual-MiniLM-L12-v2", alias="EMBEDDING_MODEL"
+    )
+
+    rag_chunk_max_tokens: int = Field(default=200, alias="RAG_CHUNK_MAX_TOKENS")
+    rag_chunk_overlap: int = Field(default=20, alias="RAG_CHUNK_OVERLAP")
+    rag_similarity_threshold: float = Field(default=0.2, alias="RAG_SIMILARITY_THRESHOLD")
+
 
 @lru_cache
 def get_settings() -> Settings:
