@@ -50,7 +50,13 @@ core        →  transverse (config, logging, exceptions, database)
 
 ## Ajouter un connecteur
 
-À compléter à l'implémentation du module `connectors` (Epic 2) : implémenter l'interface `Connector`, l'enregistrer dans `connectors/registry.py`, tester avec `connectors/mock`.
+Trois étapes, illustrées par le connecteur GitHub Issues (`app/connectors/github/`) :
+
+1. **Implémenter l'interface** `Connector` (`app/connectors/base.py`) : `fetch_items(**params)` récupère les items bruts depuis la source externe, `to_document(item)` les convertit en `DocumentIn` (réutilisé tel quel par le pipeline d'ingestion du module `rag`).
+2. **Enregistrer** le connecteur dans `app/connectors/registry.py` (dictionnaire nom → instance). Aucun autre module n'importe une implémentation concrète (`github/`, `mock/`) directement — uniquement `connectors/base.py` et `connectors/registry.py`.
+3. **Tester** en s'inspirant de `app/connectors/mock/` (aucun appel réseau, données fixes) pour valider le pipeline connecteur → RAG, puis un test dédié qui mock les appels HTTP du connecteur réel (voir `tests/connectors/test_github_connector.py`).
+
+Synchronisation : `POST /connectors/{name}/sync` avec un corps JSON portant les paramètres propres au connecteur (ex : `{"owner": "acme", "repo": "demo"}` pour GitHub).
 
 ## Autonomie configurable (gating)
 

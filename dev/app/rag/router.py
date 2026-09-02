@@ -10,7 +10,15 @@ from app.rag.schemas import DocumentIn, IngestResponse, SearchResponse, SearchRe
 router = APIRouter()
 
 
-@router.post("/ingest", response_model=IngestResponse)
+@router.post(
+    "/ingest",
+    response_model=IngestResponse,
+    summary="Ingérer un document",
+    description=(
+        "Découpe le contenu en fragments (chunks), calcule leurs embeddings et les stocke. "
+        "Renvoie `status: partial` si le calcul d'embedding échoue, sans perdre le document."
+    ),
+)
 async def ingest(
     payload: DocumentIn,
     db: AsyncSession = Depends(get_db),
@@ -24,7 +32,15 @@ async def ingest(
     )
 
 
-@router.get("/search", response_model=SearchResponse)
+@router.get(
+    "/search",
+    response_model=SearchResponse,
+    summary="Rechercher les fragments les plus pertinents",
+    description=(
+        "Calcule l'embedding de la question et renvoie les `top_k` fragments les plus proches "
+        "par similarité cosinus, filtrés par le seuil `RAG_SIMILARITY_THRESHOLD`."
+    ),
+)
 async def search_endpoint(
     q: str = Query(..., min_length=1),
     top_k: int = Query(5, ge=1, le=50),

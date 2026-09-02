@@ -1,0 +1,19 @@
+from pydantic import BaseModel, Field
+
+
+class GitHubComment(BaseModel):
+    body: str = ""
+
+
+class GitHubIssue(BaseModel):
+    number: int
+    title: str
+    body: str | None = ""
+    html_url: str
+    comments: int = 0
+    comments_url: str
+    pull_request: dict | None = Field(default=None)
+
+    @property
+    def is_pull_request(self) -> bool:
+        return self.pull_request is not None

@@ -25,6 +25,10 @@ class ConnectorError(AppError):
     status_code = 502
 
 
+class ConnectorNotFoundError(AppError):
+    status_code = 404
+
+
 class ActionNotFoundError(AppError):
     status_code = 404
 
