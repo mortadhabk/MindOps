@@ -12,7 +12,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    source: Mapped[str]
+    source: Mapped[str] = mapped_column(unique=True)
     content: Mapped[str]
     status: Mapped[str] = mapped_column(default="pending")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

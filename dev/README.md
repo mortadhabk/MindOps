@@ -58,6 +58,18 @@ Trois étapes, illustrées par le connecteur GitHub Issues (`app/connectors/gith
 
 Synchronisation : `POST /connectors/{name}/sync` avec un corps JSON portant les paramètres propres au connecteur (ex : `{"owner": "acme", "repo": "demo"}` pour GitHub).
 
+## Discuter avec l'agent (Epic 3)
+
+L'orchestrateur agentique est construit avec **LangGraph** (boucle LLM ↔ outils comme un graphe d'états) et **Ollama** en local par défaut (`LLM_PROVIDER=ollama`, `LLM_MODEL=llama3.1:8b` dans `.env` — nécessite `ollama pull llama3.1:8b` et Ollama lancé sur la machine hôte).
+
+```bash
+curl -N -X POST http://localhost:8000/agent/chat \
+  -H "Content-Type: application/json" \
+  -d '{"conversation_id": "demo-1", "message": "Pourquoi le paiement echoue ?"}'
+```
+
+La réponse est streamée en Server-Sent Events (`event: start`, `event: delta` répétés, `event: done`). L'historique de conversation est conservé en mémoire pour la durée de vie du processus, indexé par `conversation_id` (remplaçable par un checkpointer Postgres sans toucher à `agent/orchestrator.py`). Le seul outil branché pour l'instant est `search_knowledge` (réutilise `rag/retriever.py`, Epic 1) ; `send_email` viendra avec le gating (Epic 4).
+
 ## Autonomie configurable (gating)
 
 À compléter à l'implémentation du module `gating` (Epic 4) : basculer la politique de confiance d'un type d'action (`suggest_only` / `require_validation` / `auto_execute`) sans changement de code.

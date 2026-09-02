@@ -62,6 +62,31 @@ async def test_ingest_document_creates_chunks_with_embeddings(db_session):
     assert len(stored_chunks[0].embedding) == FakeEmbeddingProvider.dimension
 
 
+async def test_ingest_document_upserts_by_source_instead_of_duplicating(db_session):
+    first, _ = await ingest_document(
+        db_session,
+        source="dedup-suite",
+        content="Premiere version du contenu",
+        provider=FakeEmbeddingProvider(),
+    )
+
+    second, chunks_created = await ingest_document(
+        db_session,
+        source="dedup-suite",
+        content="Deuxieme version du contenu, plus longue que la precedente",
+        provider=FakeEmbeddingProvider(),
+    )
+
+    assert second.id == first.id
+    assert second.content == "Deuxieme version du contenu, plus longue que la precedente"
+    assert chunks_created == 1
+
+    stored = await db_session.execute(select(Chunk).where(Chunk.document_id == second.id))
+    stored_chunks = stored.scalars().all()
+    assert len(stored_chunks) == 1
+    assert stored_chunks[0].text == "Deuxieme version du contenu, plus longue que la precedente"
+
+
 async def test_ingest_document_marks_partial_on_embedding_failure(db_session):
     document, chunks_created = await ingest_document(
         db_session,

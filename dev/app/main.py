@@ -20,6 +20,7 @@ app = FastAPI(
         {"name": "infra", "description": "Endpoints d'infrastructure (santé, ...)"},
         {"name": "rag", "description": "Ingestion et recherche sémantique (Epic 1)"},
         {"name": "connectors", "description": "Synchronisation des sources externes (Epic 2)"},
+        {"name": "agent", "description": "Orchestrateur agentique, chat en streaming (Epic 3)"},
     ],
 )
 

@@ -33,3 +33,18 @@ async def test_sync_unknown_connector_returns_404(client: AsyncClient):
     response = await client.post("/connectors/does-not-exist/sync", json={})
 
     assert response.status_code == 404
+
+
+async def test_resyncing_the_same_connector_does_not_duplicate_documents(client: AsyncClient):
+    await client.post("/connectors/mock/sync", json={})
+
+    response = await client.post("/connectors/mock/sync", json={})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["synced"] == 2
+    assert body["errors"] == []
+
+    search = await client.get("/rag/search", params={"q": "paiement", "top_k": 10})
+    matches = [r for r in search.json()["results"] if "10 000 euros" in r["text"]]
+    assert len(matches) == 1

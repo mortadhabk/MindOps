@@ -1,3 +1,4 @@
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -43,9 +44,17 @@ async def ingest_document(
     max_tokens = max_tokens if max_tokens is not None else settings.rag_chunk_max_tokens
     overlap = overlap if overlap is not None else settings.rag_chunk_overlap
 
-    document = Document(source=source, content=content, status="pending")
-    db.add(document)
-    await db.flush()
+    existing = await db.execute(select(Document).where(Document.source == source))
+    document = existing.scalar_one_or_none()
+    if document is None:
+        document = Document(source=source, content=content, status="pending")
+        db.add(document)
+        await db.flush()
+    else:
+        document.content = content
+        document.status = "pending"
+        await db.execute(delete(Chunk).where(Chunk.document_id == document.id))
+        await db.flush()
 
     chunk_texts = chunk_text(content, max_tokens=max_tokens, overlap=overlap)
 
