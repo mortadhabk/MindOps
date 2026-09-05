@@ -17,14 +17,14 @@ interface PendingDrop {
 }
 
 export function StudioView() {
-  const { types } = useConnectorTypes();
+  const { types, loading, error, refresh } = useConnectorTypes();
   const { instances, create, move, remove, sync } = useConnectorInstances();
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
 
   return (
     <ReactFlowProvider>
       <div className="flex h-[70vh] min-h-[480px] gap-4">
-        <ConnectorPalette types={types} />
+        <ConnectorPalette types={types} loading={loading} error={error} onRetry={refresh} />
         <StudioCanvas
           instances={instances}
           onDropType={(type, position) => setPendingDrop({ type, x: position.x, y: position.y })}

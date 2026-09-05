@@ -13,6 +13,7 @@ export default defineConfig(({ command }) => ({
       "/agent": API_TARGET,
       "/gating": API_TARGET,
       "/audit": API_TARGET,
+      "/connectors": API_TARGET,
       "/health": API_TARGET,
     },
   },
