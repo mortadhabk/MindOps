@@ -1,5 +1,6 @@
 import pytest
 
+from app.connectors.document.connector import DocumentConnector
 from app.connectors.github.connector import GitHubConnector
 from app.connectors.mock.connector import MockConnector
 from app.connectors.registry import get_connector, list_connector_types, list_connectors
@@ -8,13 +9,14 @@ from app.core.exceptions import ConnectorNotFoundError
 
 
 def test_list_connectors_includes_registered_names():
-    assert set(list_connectors()) == {"github", "mock", "sharepoint"}
+    assert set(list_connectors()) == {"document", "github", "mock", "sharepoint"}
 
 
 def test_get_connector_returns_matching_implementation():
     assert isinstance(get_connector("github"), GitHubConnector)
     assert isinstance(get_connector("mock"), MockConnector)
     assert isinstance(get_connector("sharepoint"), SharePointConnector)
+    assert isinstance(get_connector("document"), DocumentConnector)
 
 
 def test_get_connector_raises_for_unknown_name():
@@ -31,3 +33,6 @@ def test_list_connector_types_exposes_config_schema_for_the_studio():
 
     sharepoint_type = types_by_name["sharepoint"]
     assert "site_url" in sharepoint_type.config_schema["properties"]
+
+    document_type = types_by_name["document"]
+    assert set(document_type.config_schema["required"]) == {"source", "content"}

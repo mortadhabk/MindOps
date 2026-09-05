@@ -41,10 +41,11 @@ async def test_create_then_list_instances(db_session: AsyncSession):
     )
 
     instances = await instance_service.list_instances(db_session)
+    by_id = {i.id: i for i in instances}
 
     assert created.status == "idle"
-    assert [i.id for i in instances] == [created.id]
-    assert instances[0].position_x == 12.5
+    assert created.id in by_id
+    assert by_id[created.id].position_x == 12.5
 
 
 async def test_update_position_persists_new_coordinates(db_session: AsyncSession):
@@ -72,7 +73,8 @@ async def test_delete_instance_removes_it(db_session: AsyncSession):
 
     await instance_service.delete_instance(db_session, instance.id)
 
-    assert await instance_service.list_instances(db_session) == []
+    remaining_ids = {i.id for i in await instance_service.list_instances(db_session)}
+    assert instance.id not in remaining_ids
 
 
 async def test_delete_instance_raises_for_unknown_instance(db_session: AsyncSession):

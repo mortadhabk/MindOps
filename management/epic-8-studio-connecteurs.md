@@ -46,7 +46,7 @@ Le Studio affiche un canvas façon diagramme d'activité :
 - Au dépôt : un formulaire de configuration s'ouvre, **généré automatiquement** depuis le schéma Pydantic du connecteur (pas de formulaire codé en dur par type).
 - Une fois configuré, le nœud reste sur le canvas, relié à l'Orchestrateur par une arête, avec un badge de statut (jamais synchronisé / en cours / N documents / erreur) et deux actions : **Synchroniser maintenant**, **Supprimer**.
 - Plusieurs instances du même type sont possibles (ex. deux dépôts GitHub différents) — chacune est un nœud distinct avec son propre nom.
-- Cas particulier **Document** : pas de synchronisation externe, on dépose directement un fichier texte ou on colle du texte dans le nœud → ingestion immédiate via `POST /rag/ingest` (déjà existant, Epic 1).
+- Cas particulier **Document** : pas de source externe à interroger, on dépose directement un fichier texte ou on colle du texte dans le formulaire du nœud. **Décision prise à l'implémentation** (plus simple que prévu initialement) : plutôt qu'un appel direct à `POST /rag/ingest` en contournant le mécanisme d'instances, `document` est un `Connector` à part entière dont `config_schema` porte `source`/`content` et dont `fetch_items()` renvoie cette config comme unique item — il bénéficie donc gratuitement de la palette, du formulaire dynamique, du statut, du bouton Synchroniser (ré-ingestion idempotente, upsert par `source`) et de la suppression, sans code parallèle.
 
 ## 3. Architecture technique
 
@@ -181,7 +181,7 @@ SHAREPOINT_CREDENTIALS={"default": {"tenant_id": "...", "client_id": "...", "cli
 | **8.2** | Frontend : onglet Studio, React Flow, palette, formulaire dynamique, nœuds avec statut (polling) | L | ✅ Fait |
 | **8.3** | Connecteur SharePoint mock (liste → documents texte, `config_schema` réaliste) | M | ✅ Fait (livré avec 8.1) |
 | **8.3-bis** | Vrai connecteur SharePoint (Microsoft Graph API, client credentials) | M | ⏳ Bloqué sur un tenant Azure AD de test |
-| **8.4** | Nœud Document dans le canvas (upload/collage → `/rag/ingest` existant) | S | À faire |
+| **8.4** | Nœud Document dans le canvas (upload/collage) | S | ✅ Fait |
 | **8.5** (bonus) | Extraction `.docx`/`.pdf` pour SharePoint, historique de sync via `audit` | M | À faire |
 
 `8.3` a été livrée avec `8.1` : exposer un troisième type de connecteur (avec un `config_schema` différent de GitHub) dès la fondation backend permettait de vérifier que `/connectors/types` généralise bien à plusieurs formes de configuration, sans attendre la Phase 8.2.

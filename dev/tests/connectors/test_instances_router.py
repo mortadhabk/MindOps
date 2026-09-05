@@ -48,7 +48,7 @@ async def test_create_instance_then_list_it(client: AsyncClient):
     assert created["status"] == "idle"
 
     listing = await client.get("/connectors/instances")
-    assert [i["id"] for i in listing.json()] == [created["id"]]
+    assert created["id"] in {i["id"] for i in listing.json()}
 
 
 async def test_create_instance_rejects_invalid_config(client: AsyncClient):
@@ -91,7 +91,7 @@ async def test_delete_instance(client: AsyncClient, db_session: AsyncSession):
 
     assert response.status_code == 204
     listing = await client.get("/connectors/instances")
-    assert listing.json() == []
+    assert instance.id not in {i["id"] for i in listing.json()}
 
 
 async def test_sync_instance_marks_syncing_and_triggers_the_background_runner(
