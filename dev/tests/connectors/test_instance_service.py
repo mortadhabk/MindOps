@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors import instance_service
@@ -8,6 +9,7 @@ from app.core.exceptions import (
     ConnectorInstanceNotFoundError,
     ConnectorNotFoundError,
 )
+from app.rag.models import Chunk, Document
 from tests.rag.fakes import FakeEmbeddingProvider
 
 
@@ -103,6 +105,60 @@ async def test_run_sync_ingests_items_and_marks_success(db_session: AsyncSession
     assert instance.status == "success"
     assert instance.last_result == {"synced": 2, "errors": []}
     assert instance.last_synced_at is not None
+
+
+async def test_run_sync_records_the_connector_instance_on_ingested_documents(
+    db_session: AsyncSession,
+):
+    instance = await instance_service.create_instance(
+        db_session, connector_type="mock", display_name="Source", config={}
+    )
+
+    await instance_service.run_sync(db_session, instance.id, FakeEmbeddingProvider())
+
+    documents = (
+        (
+            await db_session.execute(
+                select(Document).where(Document.connector_instance_id == instance.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(documents) == 2
+
+
+async def test_delete_instance_cascades_to_its_ingested_documents_and_chunks(
+    db_session: AsyncSession,
+):
+    instance = await instance_service.create_instance(
+        db_session, connector_type="mock", display_name="Source", config={}
+    )
+    await instance_service.run_sync(db_session, instance.id, FakeEmbeddingProvider())
+    document_ids = [
+        row.id
+        for row in (
+            await db_session.execute(
+                select(Document).where(Document.connector_instance_id == instance.id)
+            )
+        ).scalars()
+    ]
+    assert document_ids  # la sync a bien produit des documents à ce stade
+
+    await instance_service.delete_instance(db_session, instance.id)
+
+    remaining_documents = (
+        (await db_session.execute(select(Document).where(Document.id.in_(document_ids))))
+        .scalars()
+        .all()
+    )
+    remaining_chunks = (
+        (await db_session.execute(select(Chunk).where(Chunk.document_id.in_(document_ids))))
+        .scalars()
+        .all()
+    )
+    assert remaining_documents == []
+    assert remaining_chunks == []
 
 
 async def test_run_sync_marks_error_when_the_connector_itself_fails(

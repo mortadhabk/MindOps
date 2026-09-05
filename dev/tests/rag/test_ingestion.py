@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy import select
 
+from app.connectors import instance_service
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.ingestion import chunk_text, ingest_document
 from app.rag.models import Chunk
@@ -55,11 +56,52 @@ async def test_ingest_document_creates_chunks_with_embeddings(db_session):
 
     assert document.status == "complete"
     assert chunks_created == 1
+    assert document.connector_instance_id is None
 
     stored = await db_session.execute(select(Chunk).where(Chunk.document_id == document.id))
     stored_chunks = stored.scalars().all()
     assert len(stored_chunks) == 1
     assert len(stored_chunks[0].embedding) == FakeEmbeddingProvider.dimension
+
+
+async def test_ingest_document_records_the_connector_instance_it_came_from(db_session):
+    instance = await instance_service.create_instance(
+        db_session, connector_type="mock", display_name="Source", config={}
+    )
+
+    document, _ = await ingest_document(
+        db_session,
+        source="test-suite-provenance",
+        content="Contenu venant d'une instance de connecteur",
+        provider=FakeEmbeddingProvider(),
+        connector_instance_id=instance.id,
+    )
+
+    assert document.connector_instance_id == instance.id
+
+
+async def test_reingesting_without_a_connector_instance_id_detaches_the_document(db_session):
+    instance = await instance_service.create_instance(
+        db_session, connector_type="mock", display_name="Source", config={}
+    )
+    document, _ = await ingest_document(
+        db_session,
+        source="test-suite-detach",
+        content="Version initiale",
+        provider=FakeEmbeddingProvider(),
+        connector_instance_id=instance.id,
+    )
+    assert document.connector_instance_id == instance.id
+
+    reingested, _ = await ingest_document(
+        db_session,
+        source="test-suite-detach",
+        content="Version modifiee a la main",
+        provider=FakeEmbeddingProvider(),
+    )
+
+    assert reingested.id == document.id
+    assert reingested.connector_instance_id is None
 
 
 async def test_ingest_document_upserts_by_source_instead_of_duplicating(db_session):

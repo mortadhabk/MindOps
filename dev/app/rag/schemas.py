@@ -21,6 +21,15 @@ class IngestResponse(BaseModel):
 class SearchResultItem(BaseModel):
     chunk_id: int = Field(examples=[1])
     document_id: int = Field(examples=[1])
+    document_source: str = Field(examples=["github:acme/repo#12"])
+    connector_instance_id: int | None = Field(
+        default=None,
+        examples=[3],
+        description=(
+            "Instance de connecteur du Studio à l'origine de ce document (Epic 8), "
+            "absente si ingéré manuellement via POST /rag/ingest"
+        ),
+    )
     text: str = Field(
         examples=["Le service de paiement echoue quand le montant depasse 10 000 euros."]
     )

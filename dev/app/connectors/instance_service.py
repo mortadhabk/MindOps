@@ -98,7 +98,11 @@ async def run_sync(db: AsyncSession, instance_id: int, provider: EmbeddingProvid
             try:
                 document = connector.to_document(item)
                 await ingest_document(
-                    db, source=document.source, content=document.content, provider=provider
+                    db,
+                    source=document.source,
+                    content=document.content,
+                    provider=provider,
+                    connector_instance_id=instance_id,
                 )
                 synced += 1
             except Exception as exc:  # un item invalide ne doit pas interrompre la sync

@@ -39,6 +39,7 @@ async def ingest_document(
     provider: EmbeddingProvider,
     max_tokens: int | None = None,
     overlap: int | None = None,
+    connector_instance_id: int | None = None,
 ) -> tuple[Document, int]:
     settings = get_settings()
     max_tokens = max_tokens if max_tokens is not None else settings.rag_chunk_max_tokens
@@ -47,12 +48,21 @@ async def ingest_document(
     existing = await db.execute(select(Document).where(Document.source == source))
     document = existing.scalar_one_or_none()
     if document is None:
-        document = Document(source=source, content=content, status="pending")
+        document = Document(
+            source=source,
+            content=content,
+            status="pending",
+            connector_instance_id=connector_instance_id,
+        )
         db.add(document)
         await db.flush()
     else:
         document.content = content
         document.status = "pending"
+        # Reflète la dernière ingestion : un ré-ingest manuel (connector_instance_id=None, via
+        # POST /rag/ingest) détache le document d'un connecteur précédent, à raison — son contenu
+        # n'est plus géré par ce connecteur.
+        document.connector_instance_id = connector_instance_id
         await db.execute(delete(Chunk).where(Chunk.document_id == document.id))
         await db.flush()
 

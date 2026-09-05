@@ -15,6 +15,14 @@ class Document(Base):
     source: Mapped[str] = mapped_column(unique=True)
     content: Mapped[str]
     status: Mapped[str] = mapped_column(default="pending")
+    # Instance de connecteur du Studio (Epic 8) à l'origine de ce document, si ingéré depuis là
+    # plutôt que via POST /rag/ingest en direct. Référence par nom de table seulement (pas
+    # d'import de app.connectors.models) : `rag` reste indépendant au niveau du code, mais
+    # ON DELETE CASCADE fait supprimer ce document (et ses chunks, cascade déjà en place
+    # ci-dessous) automatiquement quand l'instance de connecteur est supprimée dans le Studio.
+    connector_instance_id: Mapped[int | None] = mapped_column(
+        ForeignKey("connector_instances.id", ondelete="CASCADE"), default=None
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     chunks: Mapped[list["Chunk"]] = relationship(

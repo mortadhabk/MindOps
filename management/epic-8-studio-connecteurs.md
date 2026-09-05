@@ -184,7 +184,17 @@ SHAREPOINT_CREDENTIALS={"default": {"tenant_id": "...", "client_id": "...", "cli
 | **8.3** | Connecteur SharePoint mock (liste → documents texte, `config_schema` réaliste) | M | ✅ Fait (livré avec 8.1) |
 | **8.3-bis** | Vrai connecteur SharePoint (Microsoft Graph API, client credentials) | M | ⏳ Bloqué sur un tenant Azure AD de test |
 | **8.4** | Nœud Document dans le canvas (upload/collage, extraction `.pdf`/`.docx` côté serveur) | S | ✅ Fait |
+| **8.6** | Traçabilité `rag.Document` → `ConnectorInstance` + suppression en cascade | S | ✅ Fait |
 | **8.5** (bonus) | Réutiliser l'extraction `.docx`/`.pdf` pour le vrai connecteur SharePoint (8.3-bis), historique de sync via `audit` | M | À faire |
+
+### 8.6 — Traçabilité et suppression en cascade (ajout post-livraison)
+
+Retour utilisateur après coup : supprimer un nœud du canvas ne supprimait pas les documents RAG qu'il avait fait ingérer — surprenant, puisque `connectors` et `rag` sont deux modules indépendants sans lien enregistré entre eux. Corrigé par une colonne `documents.connector_instance_id` (nullable, `ForeignKey("connector_instances.id", ondelete="CASCADE")`) :
+
+- **Traçabilité** : `GET /rag/search` expose désormais `document_source` et `connector_instance_id` par résultat — on sait de quel nœud du Studio (ou `null` si ingéré manuellement via `POST /rag/ingest`) vient chaque fragment retrouvé.
+- **Cascade** : supprimer une `ConnectorInstance` fait supprimer par Postgres (`ON DELETE CASCADE`), en une seule transaction atomique, tous les `Document` qu'elle a produits — et par la cascade déjà existante `Chunk.document_id`, leurs `Chunk` aussi. Aucune logique de suppression applicative à écrire : la contrainte de clé étrangère fait tout le travail, même si la ligne est supprimée autrement qu'via l'API (DBeaver, SQL direct).
+- **Compromis architectural assumé** : la colonne référence `connector_instances` par nom de table uniquement (`ForeignKey("connector_instances.id", ...)`), sans jamais importer `app.connectors.models` dans `app.rag.models` — aucun couplage Python entre les deux modules. Le couplage existe seulement au niveau du schéma SQL (la migration de cette colonne doit s'exécuter après celle qui crée `connector_instances`), pas du code.
+- Un ré-ingest manuel du même `source` via `POST /rag/ingest` détache le document de son connecteur d'origine (`connector_instance_id` repasse à `null`) — cohérent, puisque son contenu n'est alors plus géré par ce connecteur.
 
 `8.3` a été livrée avec `8.1` : exposer un troisième type de connecteur (avec un `config_schema` différent de GitHub) dès la fondation backend permettait de vérifier que `/connectors/types` généralise bien à plusieurs formes de configuration, sans attendre la Phase 8.2.
 

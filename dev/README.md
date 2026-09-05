@@ -133,6 +133,7 @@ Un second onglet dans `/demo` (« Studio ») ajoute une interface graphique pour
 - Nouveaux endpoints : `GET /connectors/types`, `GET/POST /connectors/instances`, `PATCH`/`DELETE /connectors/instances/{id}`, `POST /connectors/instances/{id}/sync` (tâche de fond — la réponse revient immédiatement avec `status: "syncing"`, le Studio interroge ensuite par polling).
 - **Sécurité** : aucun secret ne transite par le navigateur ni ne se stocke en base — `credential_alias` (ex. pour SharePoint) pointe vers des identifiants déjà présents côté serveur (`.env`), jamais saisis dans le formulaire.
 - Le connecteur `sharepoint` est pour l'instant un **mock fidèle** (même `config_schema`, même contrat `Connector` que la future implémentation Microsoft Graph API) — voir la section 4.3 de la proposition pour la portée MVP/V2.
+- **Traçabilité et suppression en cascade** : chaque document ingéré via une instance de connecteur porte `connector_instance_id` (exposé dans `GET /rag/search`, avec `document_source`) — supprimer une instance depuis le Studio supprime automatiquement (`ON DELETE CASCADE`, côté base) les documents et fragments qu'elle avait fait ingérer.
 
 ## Traçabilité (audit, Epic 5)
 

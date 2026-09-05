@@ -52,7 +52,12 @@ async def search_endpoint(
         query=q,
         results=[
             SearchResultItem(
-                chunk_id=chunk.id, document_id=chunk.document_id, text=chunk.text, score=score
+                chunk_id=chunk.id,
+                document_id=chunk.document_id,
+                document_source=chunk.document.source,
+                connector_instance_id=chunk.document.connector_instance_id,
+                text=chunk.text,
+                score=score,
             )
             for chunk, score in results
         ],
