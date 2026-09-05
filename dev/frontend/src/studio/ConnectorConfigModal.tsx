@@ -1,21 +1,12 @@
 import { type ChangeEvent, type DragEvent, type FormEvent, useState } from "react";
-import { UploadCloud, X } from "lucide-react";
+import { Loader2, UploadCloud, X } from "lucide-react";
 
-import type { ConnectorType } from "../lib/api";
+import { type ConnectorType, extractDocumentText } from "../lib/api";
 
 interface ConnectorConfigModalProps {
   connectorType: ConnectorType;
   onCancel: () => void;
   onSubmit: (displayName: string, config: Record<string, string>) => Promise<void>;
-}
-
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error ?? new Error("Lecture du fichier impossible"));
-    reader.readAsText(file);
-  });
 }
 
 /** Formulaire généré depuis le JSON Schema de `Connector.config_schema` (Epic 8) : un mapping
@@ -42,6 +33,7 @@ export function ConnectorConfigModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [extracting, setExtracting] = useState(false);
 
   const required = new Set(connectorType.config_schema.required ?? []);
   const fields = Object.entries(connectorType.config_schema.properties);
@@ -49,17 +41,22 @@ export function ConnectorConfigModal({
   const setValue = (key: string, value: string) =>
     setValues((prev) => ({ ...prev, [key]: value }));
 
+  // Extraction faite côté serveur (pypdf / python-docx) plutôt que dans le navigateur : le
+  // fichier brut est envoyé tel quel, `content` n'est rempli qu'avec le texte déjà extrait.
   const loadFile = async (file: File) => {
     setError(null);
+    setExtracting(true);
     try {
-      const text = await readFileAsText(file);
+      const { text, suggested_source } = await extractDocumentText(file);
       setValue("content", text);
       // Ne pré-remplit "source" que s'il est encore vide : ne pas écraser un nom déjà choisi.
       if (!values.source) {
-        setValue("source", file.name.replace(/\.[^./]+$/, ""));
+        setValue("source", suggested_source);
       }
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setExtracting(false);
     }
   };
 
@@ -125,24 +122,38 @@ export function ConnectorConfigModal({
             <label
               onDragOver={(event) => {
                 event.preventDefault();
-                setDragActive(true);
+                if (!extracting) setDragActive(true);
               }}
               onDragLeave={() => setDragActive(false)}
-              onDrop={onDrop}
-              className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 border-dashed p-4 text-center transition ${
+              onDrop={extracting ? undefined : onDrop}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border-2 border-dashed p-4 text-center transition ${
+                extracting ? "cursor-wait opacity-70" : "cursor-pointer"
+              } ${
                 dragActive
                   ? "border-indigo-400/60 bg-indigo-400/[0.06]"
                   : "border-white/10 bg-white/[0.02] hover:border-white/20"
               }`}
             >
-              <UploadCloud className="h-5 w-5 text-slate-400" />
+              {extracting ? (
+                <Loader2 className="h-5 w-5 animate-spin text-indigo-400" />
+              ) : (
+                <UploadCloud className="h-5 w-5 text-slate-400" />
+              )}
               <span className="text-[11px] text-slate-400">
-                Déposer un fichier texte ici, ou cliquer pour en choisir un
+                {extracting
+                  ? "Extraction du texte…"
+                  : "Déposer un fichier ici, ou cliquer pour en choisir un"}
               </span>
               <span className="text-[10px] text-slate-600">
-                Texte brut (.txt, .md, …) — pas encore de .docx/.pdf
+                Texte brut (.txt, .md), Word (.docx) ou PDF (.pdf)
               </span>
-              <input type="file" accept="text/*,.md,.txt" className="hidden" onChange={onFileInputChange} />
+              <input
+                type="file"
+                accept=".txt,.md,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                disabled={extracting}
+                onChange={onFileInputChange}
+              />
             </label>
           )}
 
@@ -192,7 +203,7 @@ export function ConnectorConfigModal({
           </button>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || extracting}
             className="rounded-lg bg-gradient-to-br from-indigo-500 to-sky-400 px-3.5 py-1.5 text-xs font-medium text-white transition disabled:opacity-50"
           >
             {submitting ? "Ajout…" : "Ajouter au canvas"}

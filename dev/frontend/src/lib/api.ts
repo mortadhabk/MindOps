@@ -219,3 +219,25 @@ export async function syncConnectorInstance(id: number): Promise<ConnectorInstan
   if (!response.ok) throw new Error(`POST /connectors/instances/${id}/sync -> ${response.status}`);
   return response.json();
 }
+
+export interface DocumentExtractionResult {
+  text: string;
+  suggested_source: string;
+}
+
+/** Extraction faite côté serveur (pypdf / python-docx, voir app/connectors/document/extraction.py)
+ * plutôt que dans le navigateur : évite d'embarquer une lib de parsing PDF/DOCX dans le bundle
+ * front, et fonctionne à l'identique quel que soit le client (Studio, curl, ...). */
+export async function extractDocumentText(file: File): Promise<DocumentExtractionResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch("/connectors/document/extract-text", {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? `POST /connectors/document/extract-text -> ${response.status}`);
+  }
+  return response.json();
+}

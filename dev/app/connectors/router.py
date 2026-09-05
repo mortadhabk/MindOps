@@ -1,10 +1,13 @@
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors import instance_service
+from app.connectors.document.extraction import extract_text
+from app.connectors.document.schemas import DocumentExtractionResult
 from app.connectors.registry import get_connector, list_connector_types
 from app.connectors.schemas import (
     ConnectorInstanceCreate,
@@ -92,6 +95,24 @@ async def connector_types() -> list[ConnectorTypeOut]:
         )
         for info in list_connector_types()
     ]
+
+
+@router.post(
+    "/document/extract-text",
+    response_model=DocumentExtractionResult,
+    summary="Extraire le texte d'un fichier déposé dans le nœud Document",
+    description=(
+        "Convertit un fichier (.pdf, .docx, ou texte brut) en texte, pour préremplir le champ "
+        "`content` du formulaire de configuration du connecteur `document` (Epic 8, US 8.4). "
+        "N'écrit rien en base — l'extraction est un simple utilitaire, la persistance passe "
+        "ensuite par `POST /connectors/instances`."
+    ),
+)
+async def extract_document_text(file: UploadFile = File(...)) -> DocumentExtractionResult:
+    raw_bytes = await file.read()
+    text = extract_text(filename=file.filename or "", raw_bytes=raw_bytes)
+    suggested_source = Path(file.filename or "document").stem
+    return DocumentExtractionResult(text=text, suggested_source=suggested_source)
 
 
 @router.get(

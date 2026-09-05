@@ -158,9 +158,11 @@ class SharePointConnectorConfig(BaseModel):
 
 | | MVP (Epic 8) | V2 (plus tard) |
 |---|---|---|
-| Source lue | Une **liste SharePoint** (titre + colonnes texte) — même complexité qu'une issue GitHub | Bibliothèque de documents (fichiers) |
-| Formats | Texte brut uniquement | `.docx`, `.pdf` avec extraction de texte (`python-docx`, `pypdf` — nouvelles dépendances) |
-| Justification | Cohérent avec le pattern "items structurés → texte" déjà utilisé par GitHub Issues ; livrable rapidement, sans dépendance d'extraction de fichiers binaires | Vraie valeur métier (documents Word/PDF), mais ajoute de la complexité (parsing, tailles de fichiers, mises en page) hors du périmètre "prouver le pattern" |
+| Source lue | Une **liste SharePoint** (titre + colonnes texte) — même complexité qu'une issue GitHub | Bibliothèque de documents (fichiers hébergés sur SharePoint) |
+| Formats | Texte brut uniquement | `.docx`, `.pdf` des fichiers SharePoint |
+| Justification | Cohérent avec le pattern "items structurés → texte" déjà utilisé par GitHub Issues ; livrable rapidement, sans dépendance d'extraction de fichiers binaires | Vraie valeur métier (documents Word/PDF stockés sur SharePoint), mais suppose d'abord le vrai connecteur Graph API (8.3-bis) |
+
+> **Mise à jour (US 8.4)** : l'extraction `.pdf`/`.docx` (`pypdf`, `python-docx`) a été livrée plus tôt que prévu ici — mais pour le nœud **Document** du Studio (fichier déposé par l'utilisateur), pas pour SharePoint. `app/connectors/document/extraction.py` est néanmoins directement réutilisable le jour où le vrai connecteur SharePoint (V2 ci-dessus) devra extraire le texte de fichiers réellement hébergés sur un site SharePoint.
 
 ## 5. Sécurité des secrets — recommandation
 
@@ -181,8 +183,8 @@ SHAREPOINT_CREDENTIALS={"default": {"tenant_id": "...", "client_id": "...", "cli
 | **8.2** | Frontend : onglet Studio, React Flow, palette, formulaire dynamique, nœuds avec statut (polling) | L | ✅ Fait |
 | **8.3** | Connecteur SharePoint mock (liste → documents texte, `config_schema` réaliste) | M | ✅ Fait (livré avec 8.1) |
 | **8.3-bis** | Vrai connecteur SharePoint (Microsoft Graph API, client credentials) | M | ⏳ Bloqué sur un tenant Azure AD de test |
-| **8.4** | Nœud Document dans le canvas (upload/collage) | S | ✅ Fait |
-| **8.5** (bonus) | Extraction `.docx`/`.pdf` pour SharePoint, historique de sync via `audit` | M | À faire |
+| **8.4** | Nœud Document dans le canvas (upload/collage, extraction `.pdf`/`.docx` côté serveur) | S | ✅ Fait |
+| **8.5** (bonus) | Réutiliser l'extraction `.docx`/`.pdf` pour le vrai connecteur SharePoint (8.3-bis), historique de sync via `audit` | M | À faire |
 
 `8.3` a été livrée avec `8.1` : exposer un troisième type de connecteur (avec un `config_schema` différent de GitHub) dès la fondation backend permettait de vérifier que `/connectors/types` généralise bien à plusieurs formes de configuration, sans attendre la Phase 8.2.
 
@@ -191,8 +193,8 @@ SHAREPOINT_CREDENTIALS={"default": {"tenant_id": "...", "client_id": "...", "cli
 | Dépendance | Où | Pourquoi |
 |---|---|---|
 | `@xyflow/react` | frontend | canvas drag-and-drop (voir 3.1) |
-| `msal` (Microsoft Authentication Library, MIT) | backend | flux client credentials contre Azure AD, standard du marché plutôt que réimplémenter OAuth2 à la main |
-| `python-docx`, `pypdf` | backend | seulement en phase 8.5 (V2), pas nécessaires pour le MVP |
+| `msal` (Microsoft Authentication Library, MIT) | backend | à ajouter pour 8.3-bis (vrai connecteur SharePoint) : flux client credentials contre Azure AD, standard du marché plutôt que réimplémenter OAuth2 à la main |
+| `pypdf`, `python-docx`, `python-multipart` | backend | ✅ ajoutées avec 8.4 : extraction de texte pour le nœud Document (`.pdf`, `.docx`) et upload multipart |
 
 ## 8. Décisions actées
 

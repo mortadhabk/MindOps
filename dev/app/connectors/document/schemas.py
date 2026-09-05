@@ -14,3 +14,8 @@ class DocumentConnectorConfig(BaseModel):
     content: str = Field(
         min_length=1, description="Contenu texte à ingérer dans la base de connaissances"
     )
+
+
+class DocumentExtractionResult(BaseModel):
+    text: str = Field(description="Texte extrait du fichier déposé")
+    suggested_source: str = Field(description="Nom de fichier sans extension, comme suggestion")
