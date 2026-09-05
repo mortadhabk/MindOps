@@ -6,6 +6,7 @@ Socle agentique modulaire (RAG + connecteurs + orchestration + politique de conf
 
 ```bash
 cp .env.example .env
+cd frontend && npm install && npm run build && cd ..   # build de l'interface de démo (Epic 6)
 docker compose up -d
 docker compose exec api uv run alembic upgrade head
 ```
@@ -97,11 +98,26 @@ Voir [`management/gating-field-manual.pdf`](../management/gating-field-manual.pd
 
 ## Interface de démo (Epic 6)
 
-Une page HTML/JS statique (`app/static/`, montée sur `/demo`) réunit en un seul écran les trois modules développés jusqu'ici, sans dépendance ni service supplémentaire (US-601, US-602) :
+Une SPA React + TypeScript + Tailwind (`frontend/`), buildée avec Vite, réunit en un seul écran les trois modules développés jusqu'ici (US-601, US-602) :
 
-- **Chat** : discute avec l'agent, réponse streamée token par token (même flux SSE que `POST /agent/chat`).
+- **Chat** : discute avec l'agent, réponse streamée token par token (même flux SSE que `POST /agent/chat`, consommé "à la main" via `fetch` + lecture du corps — `EventSource` ne supporte pas les requêtes `POST`).
 - **File de validation** : liste les `ActionProposal` en attente (`GET /gating/pending`), avec un bouton Approuver/Rejeter par ligne (`POST /gating/{id}/decide`) — se rafraîchit automatiquement dès qu'un `event: pending_approval` arrive dans le chat.
 - **Journal d'audit** : les événements les plus récents (`GET /audit/logs`), filtrables par type d'événement.
+
+`frontend/vite.config.ts` écrit le build directement dans `app/static/` (déjà monté sur `/demo` par `app/main.py`, déjà bind-monté par `docker-compose.yml`) — `app/static/` est donc un **répertoire généré**, jamais commité (voir `.gitignore`). Il faut le construire au moins une fois avant de démarrer l'API :
+
+```bash
+cd frontend
+npm install
+npm run build   # écrit dans ../app/static — à refaire après chaque modification du front
+```
+
+Pour itérer sur le front avec rechargement à chaud (API déjà lancée sur :8000, via Docker ou en local) :
+
+```bash
+cd frontend
+npm run dev   # http://localhost:5173, proxy /agent /gating /audit /health vers :8000
+```
 
 ```
 http://localhost:8000/demo/

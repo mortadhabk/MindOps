@@ -1,3 +1,5 @@
+import re
+
 from httpx import AsyncClient
 
 
@@ -8,9 +10,15 @@ async def test_demo_serves_the_static_page(client: AsyncClient) -> None:
     assert "Agent IA" in response.text
 
 
-async def test_demo_serves_its_script_and_stylesheet(client: AsyncClient) -> None:
-    js_response = await client.get("/demo/app.js")
-    css_response = await client.get("/demo/style.css")
+async def test_demo_serves_its_built_assets(client: AsyncClient) -> None:
+    """Les noms de fichiers du build Vite sont hashés (ex: assets/index-BG7IHB6r.js) et changent
+    à chaque build : on les extrait de l'index servi plutôt que de les coder en dur."""
+    index = await client.get("/demo/")
+    asset_paths = re.findall(r'(?:src|href)="(/demo/assets/[^"]+)"', index.text)
 
-    assert js_response.status_code == 200
-    assert css_response.status_code == 200
+    assert asset_paths, (
+        "aucun asset référencé dans app/static/index.html — le front a-t-il été buildé ?"
+    )
+    for path in asset_paths:
+        response = await client.get(path)
+        assert response.status_code == 200
