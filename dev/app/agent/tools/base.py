@@ -10,6 +10,7 @@ class Tool(ABC):
     name: ClassVar[str]
     description: ClassVar[str]
     args_schema: ClassVar[type[BaseModel]]
+    sensitive: ClassVar[bool] = False  # True : passe par la politique de confiance (Epic 4)
 
     @abstractmethod
     async def execute(self, **kwargs: object) -> str:

@@ -26,8 +26,16 @@ class Settings(BaseSettings):
 
     email_api_key: str | None = Field(default=None, alias="EMAIL_API_KEY")
     email_from: str | None = Field(default=None, alias="EMAIL_FROM")
+    # Sandbox Mailtrap (Email Testing) : e-mails capturés dans une boîte fictive, jamais
+    # réellement délivrés — https://mailtrap.io/inboxes, onglet "Integration" > API.
+    mailtrap_inbox_id: str | None = Field(default=None, alias="MAILTRAP_INBOX_ID")
 
     api_key: str | None = Field(default=None, alias="API_KEY")
+
+    gating_policy: dict[str, str] = Field(
+        default_factory=lambda: {"send_email": "require_validation"}, alias="GATING_POLICY"
+    )
+    gating_min_confidence: float = Field(default=0.8, alias="GATING_MIN_CONFIDENCE")
 
     embedding_provider: str = Field(default="local", alias="EMBEDDING_PROVIDER")
     embedding_model: str = Field(

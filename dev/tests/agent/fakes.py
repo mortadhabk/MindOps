@@ -55,3 +55,24 @@ class EchoTool(Tool):
     async def execute(self, **kwargs: object) -> str:
         self.calls.append(kwargs)
         return f"echo: {kwargs.get('text', '')}"
+
+
+class FakeSensitiveArgs(BaseModel):
+    value: str
+
+
+class FakeSensitiveTool(Tool):
+    """Outil sensible factice (Epic 4) : mêmes garanties que SendEmailTool, sans réseau —
+    permet de tester le cycle policy/interrupt/resume sans dépendance externe."""
+
+    name = "fake_sensitive_action"
+    description = "Outil de test, sensible, pour vérifier le cycle gating sans dépendance externe."
+    args_schema = FakeSensitiveArgs
+    sensitive = True
+
+    def __init__(self):
+        self.delivered: list[str] = []
+
+    async def execute(self, *, value: str) -> str:
+        self.delivered.append(value)
+        return f"livré: {value}"

@@ -6,7 +6,9 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_agent_poc
     ports:
-      - "5432:5432"
+      # 5442, pas 5432 : un Postgres natif Windows squatte déjà 5432 sur cette machine,
+      # en conflit avec le port-forward Docker Desktop (IPv4 vs IPv6) — voir management/dbeaver-connexion-locale.md
+      - "5442:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
