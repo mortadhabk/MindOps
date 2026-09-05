@@ -63,5 +63,7 @@ async def decide(db: AsyncSession, proposal_id: int, decision: str) -> ActionPro
     proposal.decided_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
     await db.refresh(proposal)
-    await write_log("gating.decision", {"proposal_id": proposal_id, "decision": decision})
+    await write_log(
+        db, "gating.decision", {"proposal_id": proposal_id, "decision": decision}, source="gating"
+    )
     return proposal

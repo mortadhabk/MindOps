@@ -11,6 +11,7 @@ from langgraph.types import interrupt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.tools.base import Tool
+from app.audit.service import write_log
 from app.gating import policy
 from app.gating.models import ActionStatus
 from app.gating.queue_service import create_proposal, get_proposal_for_tool_call
@@ -47,11 +48,20 @@ def build_graph(
     ]
     llm_with_tools = llm.bind_tools(tool_defs) if tool_defs else llm
 
-    async def call_model(state: MessagesState) -> dict:
+    async def call_model(state: MessagesState, config: RunnableConfig) -> dict:
         messages = state["messages"]
         if not messages or not isinstance(messages[0], SystemMessage):
             messages = [SystemMessage(content=SYSTEM_PROMPT), *messages]
         response = await llm_with_tools.ainvoke(messages)
+        await write_log(
+            db,
+            "agent.llm_call",
+            {
+                "conversation_id": config["configurable"]["thread_id"],
+                "tool_calls": [call["name"] for call in response.tool_calls],
+            },
+            source="agent",
+        )
         return {"messages": [response]}
 
     async def call_tools(state: MessagesState, config: RunnableConfig) -> dict:
@@ -115,6 +125,16 @@ async def _run_sensitive_tool(
             action_type=tool.name,
             parameters=call["args"],
             status=status,
+        )
+        await write_log(
+            db,
+            "agent.action_proposed",
+            {
+                "proposal_id": proposal.id,
+                "action_type": tool.name,
+                "conversation_id": conversation_id,
+            },
+            source="agent",
         )
     else:
         proposal = existing

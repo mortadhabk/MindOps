@@ -1,8 +1,17 @@
-from app.core.logging import logger
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.audit.models import AuditLog
 
 
-async def write_log(event_type: str, payload: dict) -> None:
-    """Squelette minimal (Epic 4) : journalise via le logger structuré existant. Remplacé par
-    une table `AuditLog` persistante en Epic 5 (US-501, US-502) sans que les appelants
-    (`gating`, `agent`) n'aient à changer — c'est le contrat, pas l'implémentation, qui compte."""
-    logger.info("audit_event type=%s payload=%s", event_type, payload)
+async def write_log(
+    db: AsyncSession,
+    event_type: str,
+    payload: dict,
+    *,
+    source: str,
+    result: str | None = None,
+) -> None:
+    """Point de passage obligé pour tracer un événement (US-502) : `agent` et `gating` ne
+    doivent jamais écrire directement dans `audit_logs`, seulement appeler cette fonction."""
+    db.add(AuditLog(event_type=event_type, source=source, payload=payload, result=result))
+    await db.commit()

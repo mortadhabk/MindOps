@@ -93,4 +93,13 @@ curl -X POST http://localhost:8000/gating/1/decide \
 
 `approve` reprend le graphe interrompu (`Command(resume=...)`) et exécute réellement l'envoi ; `reject` le reprend sans jamais exécuter l'action — dans les deux cas l'agent termine sa réponse. Changer `GATING_POLICY` en `auto_execute` et relancer l'API fait disparaître l'interruption sans aucune modification de `agent/orchestrator.py` ni `gating/` : c'est la démonstration chiffrée que le curseur de confiance est un paramètre de configuration, pas une réécriture (US-406).
 
-Voir [`management/gating-field-manual.html`](../management/gating-field-manual.html) pour l'architecture détaillée (diagrammes de classes, de séquence et d'activité).
+Voir [`management/gating-field-manual.pdf`](../management/gating-field-manual.pdf) pour l'architecture détaillée (diagrammes de classes, de séquence et d'activité).
+
+## Traçabilité (audit, Epic 5)
+
+Le module `audit` journalise, dans la table persistante `audit_logs`, chaque appel LLM (`agent.llm_call`), proposition d'action (`agent.action_proposed`) et décision de validation (`gating.decision`) — c'est le point de passage obligé (`audit.service.write_log`) utilisé par `agent` et `gating`, jamais contourné.
+
+```bash
+curl http://localhost:8000/audit/logs
+curl "http://localhost:8000/audit/logs?event_type=gating.decision"
+```

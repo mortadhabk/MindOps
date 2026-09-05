@@ -24,6 +24,7 @@ app = FastAPI(
         {"name": "connectors", "description": "Synchronisation des sources externes (Epic 2)"},
         {"name": "agent", "description": "Orchestrateur agentique, chat en streaming (Epic 3)"},
         {"name": "gating", "description": "Politique de confiance et validation humaine (Epic 4)"},
+        {"name": "audit", "description": "Journal d'audit et traçabilité des événements (Epic 5)"},
     ],
 )
 
