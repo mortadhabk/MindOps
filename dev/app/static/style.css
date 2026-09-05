@@ -1,0 +1,237 @@
+:root {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #e0e2e7;
+  --text: #1c1e21;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --danger: #dc2626;
+  --user-bubble: #2563eb;
+  --assistant-bubble: #eef1f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+header {
+  padding: 20px 24px 8px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 8px 24px 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.panel-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.messages {
+  height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+
+.message {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: var(--user-bubble);
+  color: var(--accent-contrast);
+  border-bottom-right-radius: 2px;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: var(--assistant-bubble);
+  color: var(--text);
+  border-bottom-left-radius: 2px;
+}
+
+#chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+#send-btn {
+  padding: 0 18px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+#send-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.refresh {
+  padding: 6px 10px;
+  background: var(--assistant-bubble);
+  color: var(--text);
+}
+
+select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.82rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+td pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 8px;
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.actions button.approve {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  padding: 5px 10px;
+  margin-right: 6px;
+}
+
+.actions button.reject {
+  background: #fde8e8;
+  color: var(--danger);
+  padding: 5px 10px;
+}
+
+#gating table tbody, #audit table tbody {
+  display: block;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+#gating table thead, #gating table tbody tr,
+#audit table thead, #audit table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}

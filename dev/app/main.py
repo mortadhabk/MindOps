@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.agent.resume_service import resume_agent_graph
 from app.api.router import router as api_router
@@ -31,6 +34,10 @@ app = FastAPI(
 app.add_middleware(RequestIDMiddleware)
 register_exception_handlers(app)
 app.include_router(api_router)
+
+# Interface de démo minimaliste (US-601, US-602) : chat + file de validation + audit en une
+# page HTML/JS statique, servie tel quel — aucune dépendance ni service supplémentaire.
+app.mount("/demo", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="demo")
 
 # Composition root (Ports & Adapters) : gating.router expose un port GraphResumer sans jamais
 # importer `agent` (règle de dépendance) ; c'est ici, à l'unique endroit où les deux modules se

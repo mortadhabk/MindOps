@@ -10,7 +10,7 @@ docker compose up -d
 docker compose exec api uv run alembic upgrade head
 ```
 
-L'API est alors disponible sur http://localhost:8000, avec un contrôle de santé sur `GET /health`.
+L'API est alors disponible sur http://localhost:8000, avec un contrôle de santé sur `GET /health`. Interface de démo (chat + gating + audit) sur http://localhost:8000/demo/ — voir la section [Interface de démo](#interface-de-démo-epic-6) plus bas.
 
 ## Développement local (sans Docker pour l'API)
 
@@ -94,6 +94,18 @@ curl -X POST http://localhost:8000/gating/1/decide \
 `approve` reprend le graphe interrompu (`Command(resume=...)`) et exécute réellement l'envoi ; `reject` le reprend sans jamais exécuter l'action — dans les deux cas l'agent termine sa réponse. Changer `GATING_POLICY` en `auto_execute` et relancer l'API fait disparaître l'interruption sans aucune modification de `agent/orchestrator.py` ni `gating/` : c'est la démonstration chiffrée que le curseur de confiance est un paramètre de configuration, pas une réécriture (US-406).
 
 Voir [`management/gating-field-manual.pdf`](../management/gating-field-manual.pdf) pour l'architecture détaillée (diagrammes de classes, de séquence et d'activité).
+
+## Interface de démo (Epic 6)
+
+Une page HTML/JS statique (`app/static/`, montée sur `/demo`) réunit en un seul écran les trois modules développés jusqu'ici, sans dépendance ni service supplémentaire (US-601, US-602) :
+
+- **Chat** : discute avec l'agent, réponse streamée token par token (même flux SSE que `POST /agent/chat`).
+- **File de validation** : liste les `ActionProposal` en attente (`GET /gating/pending`), avec un bouton Approuver/Rejeter par ligne (`POST /gating/{id}/decide`) — se rafraîchit automatiquement dès qu'un `event: pending_approval` arrive dans le chat.
+- **Journal d'audit** : les événements les plus récents (`GET /audit/logs`), filtrables par type d'événement.
+
+```
+http://localhost:8000/demo/
+```
 
 ## Traçabilité (audit, Epic 5)
 
