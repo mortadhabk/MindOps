@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.audit import models as audit_models  # noqa: F401  registre les tables sur Base.metadata
 from app.config import get_settings
+from app.connectors import models as connectors_models  # noqa: F401  idem
 from app.core.database import Base
 from app.gating import models as gating_models  # noqa: F401  registre les tables sur Base.metadata
 from app.rag import models as rag_models  # noqa: F401  registre les tables sur Base.metadata

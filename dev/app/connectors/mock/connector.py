@@ -1,7 +1,13 @@
 from typing import Any
 
+from pydantic import BaseModel
+
 from app.connectors.base import Connector
 from app.rag.schemas import DocumentIn
+
+
+class MockConnectorConfig(BaseModel):
+    """Aucun paramètre : le connecteur factice renvoie toujours les mêmes items (Epic 8)."""
 
 FIXED_ITEMS: list[dict[str, Any]] = [
     {
@@ -22,6 +28,9 @@ class MockConnector(Connector):
     """Connecteur factice, sans appel reseau, pour tester le pipeline connecteur -> RAG."""
 
     name = "mock"
+    display_name = "Connecteur factice"
+    description = "Renvoie toujours les 2 mêmes items fixes, sans appel réseau (tests, démo)."
+    config_schema = MockConnectorConfig
 
     async def fetch_items(self, **params: Any) -> list[dict[str, Any]]:
         return FIXED_ITEMS

@@ -21,6 +21,46 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export interface JsonSchemaProperty {
+  type?: string;
+  title?: string;
+  description?: string;
+  default?: unknown;
+  examples?: unknown[];
+}
+
+export interface ConnectorConfigSchema {
+  properties: Record<string, JsonSchemaProperty>;
+  required?: string[];
+}
+
+export interface ConnectorType {
+  name: string;
+  display_name: string;
+  description: string;
+  config_schema: ConnectorConfigSchema;
+}
+
+export type ConnectorInstanceStatus = "idle" | "syncing" | "success" | "error";
+
+export interface ConnectorSyncResult {
+  synced: number;
+  errors: string[];
+}
+
+export interface ConnectorInstance {
+  id: number;
+  connector_type: string;
+  display_name: string;
+  config: Record<string, unknown>;
+  position_x: number;
+  position_y: number;
+  status: ConnectorInstanceStatus;
+  last_synced_at: string | null;
+  last_result: ConnectorSyncResult | null;
+  created_at: string;
+}
+
 export type ChatSseEvent =
   | { type: "start"; conversationId: string }
   | { type: "delta"; text: string }
@@ -117,5 +157,65 @@ export async function fetchAuditLogs(eventType?: string): Promise<AuditLogEntry[
   const url = eventType ? `/audit/logs?event_type=${encodeURIComponent(eventType)}` : "/audit/logs";
   const response = await fetch(url);
   if (!response.ok) throw new Error(`GET /audit/logs -> ${response.status}`);
+  return response.json();
+}
+
+export async function fetchConnectorTypes(): Promise<ConnectorType[]> {
+  const response = await fetch("/connectors/types");
+  if (!response.ok) throw new Error(`GET /connectors/types -> ${response.status}`);
+  return response.json();
+}
+
+export async function fetchConnectorInstances(): Promise<ConnectorInstance[]> {
+  const response = await fetch("/connectors/instances");
+  if (!response.ok) throw new Error(`GET /connectors/instances -> ${response.status}`);
+  return response.json();
+}
+
+interface CreateConnectorInstanceInput {
+  connector_type: string;
+  display_name: string;
+  config: Record<string, unknown>;
+  position_x: number;
+  position_y: number;
+}
+
+export async function createConnectorInstance(
+  input: CreateConnectorInstanceInput,
+): Promise<ConnectorInstance> {
+  const response = await fetch("/connectors/instances", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? `POST /connectors/instances -> ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function updateConnectorInstancePosition(
+  id: number,
+  positionX: number,
+  positionY: number,
+): Promise<ConnectorInstance> {
+  const response = await fetch(`/connectors/instances/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ position_x: positionX, position_y: positionY }),
+  });
+  if (!response.ok) throw new Error(`PATCH /connectors/instances/${id} -> ${response.status}`);
+  return response.json();
+}
+
+export async function deleteConnectorInstance(id: number): Promise<void> {
+  const response = await fetch(`/connectors/instances/${id}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(`DELETE /connectors/instances/${id} -> ${response.status}`);
+}
+
+export async function syncConnectorInstance(id: number): Promise<ConnectorInstance> {
+  const response = await fetch(`/connectors/instances/${id}/sync`, { method: "POST" });
+  if (!response.ok) throw new Error(`POST /connectors/instances/${id}/sync -> ${response.status}`);
   return response.json();
 }

@@ -4,7 +4,7 @@ import httpx
 
 from app.config import get_settings
 from app.connectors.base import Connector
-from app.connectors.github.schemas import GitHubIssue
+from app.connectors.github.schemas import GitHubConnectorConfig, GitHubIssue
 from app.core.exceptions import ConnectorError
 from app.rag.schemas import DocumentIn
 
@@ -25,6 +25,9 @@ class GitHubConnector(Connector):
     """Adapter en lecture seule pour l'API GitHub Issues."""
 
     name = "github"
+    display_name = "GitHub Issues"
+    description = "Synchronise les issues (titre, corps, commentaires) d'un dépôt GitHub public."
+    config_schema = GitHubConnectorConfig
 
     def _headers(self) -> dict[str, str]:
         headers = {

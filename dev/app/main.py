@@ -35,9 +35,12 @@ app.add_middleware(RequestIDMiddleware)
 register_exception_handlers(app)
 app.include_router(api_router)
 
-# Interface de démo minimaliste (US-601, US-602) : chat + file de validation + audit en une
-# page HTML/JS statique, servie tel quel — aucune dépendance ni service supplémentaire.
-app.mount("/demo", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="demo")
+# Interface de démo (Epics 6 et 8) : SPA React buildée par Vite dans app/static/ (répertoire
+# généré, jamais commité — voir .gitignore). Créé ici au cas où l'API démarre avant le premier
+# `npm run build` : StaticFiles refuse de monter un répertoire absent.
+static_dir = Path(__file__).parent / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/demo", StaticFiles(directory=static_dir, html=True), name="demo")
 
 # Composition root (Ports & Adapters) : gating.router expose un port GraphResumer sans jamais
 # importer `agent` (règle de dépendance) ; c'est ici, à l'unique endroit où les deux modules se

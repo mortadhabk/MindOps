@@ -29,6 +29,14 @@ class ConnectorNotFoundError(AppError):
     status_code = 404
 
 
+class ConnectorInstanceNotFoundError(AppError):
+    status_code = 404
+
+
+class ConnectorConfigError(AppError):
+    status_code = 422
+
+
 class ActionNotFoundError(AppError):
     status_code = 404
 

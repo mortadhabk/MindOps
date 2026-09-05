@@ -19,6 +19,39 @@ export function RefreshButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+export interface TabOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+interface TabSwitchProps<T extends string> {
+  value: T;
+  options: TabOption<T>[];
+  onChange: (value: T) => void;
+}
+
+export function TabSwitch<T extends string>({ value, options, onChange }: TabSwitchProps<T>) {
+  return (
+    <div className="inline-flex rounded-full border border-white/10 bg-white/5 p-1">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={clsx(
+            "rounded-full px-3 py-1 text-xs font-medium transition",
+            value === option.value
+              ? "bg-gradient-to-br from-indigo-500 to-sky-400 text-white shadow-sm"
+              : "text-slate-400 hover:text-slate-200",
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface IconButtonProps {
   label: string;
   icon: ReactNode;

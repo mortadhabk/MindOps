@@ -8,7 +8,7 @@ __pycache__/
 
 # Frontend (Epic 6) : app/static/ est le *build* React (voir frontend/vite.config.ts,
 # outDir "../app/static"), régénéré par `npm run build` — jamais commité, comme node_modules.
+# app/main.py crée le répertoire au démarrage s'il est absent (StaticFiles l'exige).
 frontend/node_modules/
 frontend/*.tsbuildinfo
-app/static/*
-!app/static/.gitkeep
+app/static/
