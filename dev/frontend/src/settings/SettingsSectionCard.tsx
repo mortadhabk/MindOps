@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { SettingsSection } from "../lib/api";
 import { Panel } from "../components/Panel";
+import { AgentSettingsFields } from "./AgentSettingsFields";
 import { DynamicSchemaField } from "./DynamicSchemaField";
 
 interface SettingsSectionCardProps {
@@ -77,19 +78,27 @@ export function SettingsSectionCard({ section, onSave, onReset }: SettingsSectio
       <div className="space-y-3 p-4">
         <p className="text-xs text-slate-500">{section.description}</p>
 
-        {fields.map(([key, property]) => (
-          <DynamicSchemaField
-            key={key}
-            name={key}
-            property={property}
-            required={required.has(key)}
-            value={values[key]}
-            onChange={(value) => setValues((prev) => ({ ...prev, [key]: value }))}
-            hasStoredSecret={Boolean(section.current_values[key])}
+        {section.key === "agent" ? (
+          <AgentSettingsFields
+            section={section}
+            values={values}
+            onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
           />
-        ))}
+        ) : (
+          fields.map(([key, property]) => (
+            <DynamicSchemaField
+              key={key}
+              name={key}
+              property={property}
+              required={required.has(key)}
+              value={values[key]}
+              onChange={(value) => setValues((prev) => ({ ...prev, [key]: value }))}
+              hasStoredSecret={Boolean(section.current_values[key])}
+            />
+          ))
+        )}
 
-        {readOnlyEntries.length > 0 && (
+        {section.key !== "agent" && readOnlyEntries.length > 0 && (
           <div className="space-y-1 border-t border-white/10 pt-2">
             {readOnlyEntries.map(([key, value]) => (
               <div key={key} className="flex items-center justify-between text-[11px]">

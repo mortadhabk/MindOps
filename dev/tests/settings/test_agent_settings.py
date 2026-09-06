@@ -1,12 +1,15 @@
+import pytest
+from pydantic import ValidationError
+
 from app.agent import settings as agent_settings
 from app.agent.llm_client import get_llm_client
-from app.agent.settings import MASKED_SECRET, get_effective_agent_settings
+from app.agent.settings import MASKED_SECRET, AgentSettingsSchema, get_effective_agent_settings
 from app.settings import store
 
 
 def test_get_effective_agent_settings_uses_override_when_present():
     store._overrides["agent"] = {
-        "llm_provider_kind": "ollama",
+        "llm_vendor": "ollama",
         "llm_model": "custom-model",
         "base_url": "http://custom:1234",
     }
@@ -21,7 +24,7 @@ def test_get_effective_agent_settings_decrypts_the_stored_api_key():
     from app.core.crypto import encrypt
 
     store._overrides["agent"] = {
-        "llm_provider_kind": "openai_compatible",
+        "llm_vendor": "deepseek",
         "llm_model": "deepseek-chat",
         "base_url": "https://api.deepseek.com/v1",
         "api_key": encrypt("sk-real-secret"),
@@ -36,7 +39,7 @@ def test_current_values_masks_the_api_key_instead_of_returning_it_in_clear():
     from app.core.crypto import encrypt
 
     store._overrides["agent"] = {
-        "llm_provider_kind": "openai_compatible",
+        "llm_vendor": "deepseek",
         "llm_model": "deepseek-chat",
         "base_url": "https://api.deepseek.com/v1",
         "api_key": encrypt("sk-real-secret"),
@@ -50,7 +53,7 @@ def test_current_values_masks_the_api_key_instead_of_returning_it_in_clear():
 
 def test_current_values_reports_empty_api_key_when_none_is_stored():
     store._overrides["agent"] = {
-        "llm_provider_kind": "ollama",
+        "llm_vendor": "ollama",
         "llm_model": "llama3.1:8b",
         "base_url": "http://localhost:11434",
     }
@@ -64,7 +67,7 @@ def test_pre_store_encrypts_a_newly_submitted_key():
     from app.core.crypto import decrypt
 
     result = agent_settings._pre_store(
-        {"llm_provider_kind": "anthropic", "llm_model": "claude-opus-5", "api_key": "sk-ant-new"},
+        {"llm_vendor": "anthropic", "llm_model": "claude-opus-5", "api_key": "sk-ant-new"},
         existing=None,
     )
 
@@ -76,7 +79,7 @@ def test_pre_store_keeps_the_existing_key_when_submitted_empty():
     existing = {"api_key": "already-encrypted-value"}
 
     result = agent_settings._pre_store(
-        {"llm_provider_kind": "anthropic", "llm_model": "claude-opus-5", "api_key": ""},
+        {"llm_vendor": "anthropic", "llm_model": "claude-opus-5", "api_key": ""},
         existing=existing,
     )
 
@@ -85,18 +88,20 @@ def test_pre_store_keeps_the_existing_key_when_submitted_empty():
 
 def test_pre_store_leaves_api_key_empty_when_nothing_was_ever_stored():
     result = agent_settings._pre_store(
-        {"llm_provider_kind": "ollama", "llm_model": "llama3.1:8b", "api_key": ""}, existing=None
+        {"llm_vendor": "ollama", "llm_model": "llama3.1:8b", "api_key": ""}, existing=None
     )
 
     assert result["api_key"] == ""
 
 
-def test_config_schema_exposes_provider_kinds_as_enum():
+def test_config_schema_exposes_vendors_as_enum():
     schema = agent_settings._get_config_schema()
 
-    assert set(schema["properties"]["llm_provider_kind"]["enum"]) == {
+    assert set(schema["properties"]["llm_vendor"]["enum"]) == {
         "ollama",
-        "openai_compatible",
+        "openai",
+        "deepseek",
+        "kimi",
         "anthropic",
     }
 
@@ -105,6 +110,24 @@ def test_config_schema_marks_api_key_as_a_password_field():
     schema = agent_settings._get_config_schema()
 
     assert schema["properties"]["api_key"]["format"] == "password"
+
+
+def test_read_only_exposes_the_full_vendor_catalog_for_the_frontend():
+    read_only = agent_settings._get_read_only()
+
+    assert set(read_only["vendors"]) == {"ollama", "openai", "deepseek", "kimi", "anthropic"}
+    assert "deepseek-chat" in read_only["vendors"]["deepseek"]["known_models"]
+    assert read_only["vendors"]["ollama"]["default_base_url"] is None
+
+
+def test_schema_rejects_an_unknown_vendor():
+    with pytest.raises(ValidationError):
+        AgentSettingsSchema(llm_vendor="does-not-exist", llm_model="x")
+
+
+def test_schema_accepts_every_cataloged_vendor():
+    for vendor_key in ("ollama", "openai", "deepseek", "kimi", "anthropic"):
+        AgentSettingsSchema(llm_vendor=vendor_key, llm_model="some-model")
 
 
 def test_apply_invalidates_the_cached_llm_client(monkeypatch):

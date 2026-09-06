@@ -147,13 +147,18 @@ Un troisième onglet dans `/demo` (« Paramètres ») permet de piloter les rég
 
 ### Choisir n'importe quel modèle LLM depuis l'interface
 
-La section **Agent / LLM** permet de choisir directement, depuis le navigateur, le fournisseur (Ollama local, ou distant), le modèle, l'URL et la clé API — sans toucher à `.env` ni redémarrer. Architecture orientée objet (`app/agent/providers/`, un `LLMProvider` par famille de client, comme `Connector` pour les sources de données) :
+La section **Agent / LLM** permet de choisir directement, depuis le navigateur, le fournisseur, le modèle, l'URL et la clé API — sans toucher à `.env` ni redémarrer. Deux couches (`app/agent/providers/`, orientées objet comme `Connector` pour les sources de données) :
 
-| `llm_provider_kind` | Client | Couvre |
+- **`LLMVendor`** (`catalog.py`) : un fournisseur commercial concret, avec son URL par défaut et ses modèles connus (affichés en suggestions dans l'UI, saisie libre acceptée pour un modèle plus récent) — choisi directement dans le menu déroulant du formulaire.
+- **`LLMProvider`** (`base.py` + une classe par famille) : le client LangChain réellement construit. Plusieurs fournisseurs partagent la même famille.
+
+| Fournisseur (`llm_vendor`) | Famille de client | Modèles suggérés |
 |---|---|---|
-| `ollama` | `ChatOllama` | Modèle local, aucune clé API |
-| `openai_compatible` | `ChatOpenAI` (base_url personnalisable) | GPT (OpenAI), **DeepSeek**, **Kimi/Moonshot**, OpenRouter, Groq, ... |
-| `anthropic` | `ChatAnthropic` | Claude (API native, format différent d'OpenAI) |
+| `ollama` | `ChatOllama` (local, aucune clé) | llama3.1:8b, llama3.2:3b, qwen2.5, mistral, phi3, gemma2 |
+| `openai` | `ChatOpenAI` | gpt-4o, gpt-4o-mini, gpt-4.1, o3, o3-mini |
+| `deepseek` | `ChatOpenAI` (base_url DeepSeek) | deepseek-chat, deepseek-reasoner |
+| `kimi` | `ChatOpenAI` (base_url Moonshot) | moonshot-v1-8k/32k/128k, kimi-latest |
+| `anthropic` | `ChatAnthropic` (API native) | claude-opus-5, claude-sonnet-5, claude-haiku-4-5 |
 
 **Clé API chiffrée avant stockage** (`cryptography.Fernet`, clé maîtresse `SETTINGS_ENCRYPTION_KEY` dans `.env` — le seul secret qui reste requis côté serveur) — jamais réaffichée en clair une fois sauvegardée : le formulaire montre un badge « déjà configurée » et un champ vide, soumettre vide conserve la clé existante.
 
@@ -161,10 +166,10 @@ La section **Agent / LLM** permet de choisir directement, depuis le navigateur, 
 # Générer la clé de chiffrement (une fois) :
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-# Basculer sur DeepSeek depuis l'interface (équivalent curl) :
+# Basculer sur DeepSeek depuis l'interface (équivalent curl — base_url omis, celui de DeepSeek s'applique) :
 curl -X PATCH http://localhost:8000/settings/agent \
   -H "Content-Type: application/json" \
-  -d '{"llm_provider_kind": "openai_compatible", "llm_model": "deepseek-chat", "base_url": "https://api.deepseek.com/v1", "api_key": "sk-..."}'
+  -d '{"llm_vendor": "deepseek", "llm_model": "deepseek-chat", "api_key": "sk-..."}'
 ```
 
 ```bash
