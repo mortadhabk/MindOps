@@ -2,6 +2,8 @@
 
 **Statut** : ✅ livré (phases 9.1 à 9.4, toutes en une passe — voir section 5). Section 7 pour les décisions actées.
 
+> **Addendum (post-livraison) — revirement assumé sur la section Agent/LLM.** Après livraison, l'utilisateur a explicitement demandé une politique **interface-first** pour le choix du modèle LLM : fournisseur, modèle **et clé API** saisis et modifiables directement dans l'onglet Paramètres, plutôt que la clé restant dans `.env` (le principe posé en section 3/7 ci-dessous, valable pour tout le reste — gating, RAG, connecteurs). Concession retenue : la clé est **chiffrée avant stockage** (`cryptography.Fernet`, clé maîtresse `SETTINGS_ENCRYPTION_KEY` dans `.env` — le seul secret qui reste server-side) et **jamais réaffichée en clair** une fois sauvegardée (masquée en `"••••••••"`, formulaire toujours vide au chargement, "vide = ne pas changer"). Voir section 3.2 (mise à jour) et le nouveau module `app/agent/providers/`.
+
 ## Résumé exécutif
 
 Aujourd'hui, tout paramètre du système (politique de gating, seuils RAG, modèle LLM, niveau de log, …) vit dans `dev/.env` et n'est appliqué qu'au redémarrage du conteneur `api`. Ce document propose un **troisième onglet dans `/demo`** (« Paramètres », à côté d'Assistant et Studio) permettant de piloter, visualiser et faire évoluer **tous les réglages non-secrets** du système depuis l'interface, avec effet immédiat quand c'est possible, traçabilité de chaque changement (réutilise `audit`, Epic 5), et une distinction stricte entre ce qui est éditable et ce qui reste volontairement hors de portée du navigateur (secrets, paramètres d'infrastructure).
@@ -53,16 +55,17 @@ Chaque section :
 
 ## 3. Ce qui est éditable, ce qui ne l'est pas
 
-Décision de sécurité structurante (même principe que Epic 8, section 5) : **aucun secret ne devient éditable depuis le navigateur.** Trois catégories :
+Décision de sécurité de départ (même principe que Epic 8, section 5) : **aucun secret ne devient éditable depuis le navigateur.** Revue depuis, pour un seul cas — voir l'addendum en tête de document et la ligne « Éditable, secret chiffré » ci-dessous.
 
 | Catégorie | Exemples | Traitement |
 |---|---|---|
 | **Éditable, effet immédiat** | `gating_policy`, `gating_min_confidence`, `rag_similarity_threshold`, `log_level` | Formulaire complet, sauvegarde applique tout de suite |
-| **Éditable, effet différé (documenté dans l'UI)** | `rag_chunk_max_tokens`, `rag_chunk_overlap` (n'affectent que les *futures* ingestions) ; `llm_model`, `ollama_base_url` (le client LLM en cache est invalidé à la sauvegarde, effet dès le *prochain* message, pas le tour en cours) | Formulaire complet + badge d'avertissement explicite |
+| **Éditable, effet différé (documenté dans l'UI)** | `rag_chunk_max_tokens`, `rag_chunk_overlap` (n'affectent que les *futures* ingestions) ; `llm_provider_kind`, `llm_model`, `base_url` (le client LLM en cache est invalidé à la sauvegarde, effet dès le *prochain* message, pas le tour en cours) | Formulaire complet + badge d'avertissement explicite |
+| **Éditable, secret chiffré** (addendum) | `api_key` de la section Agent/LLM — seul champ secret exposé par `/settings/*`, décision produit explicite | Champ mot de passe, chiffré (`Fernet`) avant stockage, jamais renvoyé en clair (masqué, vide au chargement, "vide = ne pas changer") |
 | **Visible mais non éditable** (redéploiement requis) | `embedding_provider`, `embedding_model` — changer le modèle rendrait les vecteurs déjà stockés incompatibles (dimension différente), nécessite une ré-ingestion complète | Affiché en lecture seule avec l'explication, pas de champ de saisie |
-| **Jamais exposé** (reste `.env`-only) | `database_url`, `llm_api_key`, `github_token`, `email_api_key`, `api_key`, `SHAREPOINT_CREDENTIALS` | Absent de l'API `/settings/*` — aucun endpoint ne les renvoie, même en lecture |
+| **Jamais exposé** (reste `.env`-only) | `database_url`, `github_token`, `email_api_key`, `api_key` (auth API), `SETTINGS_ENCRYPTION_KEY` | Absent de l'API `/settings/*` — aucun endpoint ne les renvoie, même en lecture |
 
-> **Décision à confirmer (section 7)** : pour les alias d'identifiants de connecteurs (`credential_alias`), faut-il au moins afficher *la liste des alias existants* (sans leurs valeurs), pour que l'utilisateur puisse vérifier ce qui est configuré sans avoir à ouvrir `.env` ? Recommandé : oui, en lecture seule.
+> Alias d'identifiants de connecteurs (`credential_alias`, Epic 8) : toujours hors de portée de `/settings/*` pour l'instant — ce panneau ne couvre que gating/RAG/agent/logging, pas les connecteurs.
 
 ## 4. Architecture technique
 
@@ -144,6 +147,8 @@ Note d'implémentation : plutôt qu'extraire `ConnectorConfigModal` en composant
 2. **`embedding_provider`/`embedding_model`** : affichés en lecture seule avec avertissement, non éditables en V1 (casserait la compatibilité des vecteurs déjà stockés).
 3. **Périmètre Phase 9.3** : `gating` + `rag` d'abord ; `agent`/`logging` en 9.4.
 4. **Contrôle d'accès** : `/settings/*` n'est pas protégé pour l'instant (comme le reste de l'API, US-701/Epic 7 non implémentée) — limitation documentée explicitement dans le README, pas bloquante pour ce POC.
+5. **Note** : la décision 1 (alias de connecteurs affichés en lecture seule) n'a finalement pas été implémentée — aucune section "connecteurs" n'existe dans `/settings/*`, seulement gating/rag/agent/logging (périmètre de la décision 3). À faire si le besoin se confirme.
+6. **Addendum LLM/interface-first** : revirement explicite sur la clé API du modèle LLM (voir l'encadré en tête de document) — chiffrée en base plutôt que dans `.env`, seul cas de secret exposé par `/settings/*`.
 
 ---
 

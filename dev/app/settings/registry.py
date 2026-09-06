@@ -27,6 +27,19 @@ class SettingsSection:
     # Effet de bord après sauvegarde/réinitialisation (ex: invalider un client mis en cache) —
     # None quand le module relit déjà la config à chaque appel (gating, rag : rien à faire).
     apply: Callable[[dict[str, Any]], None] | None = None
+    # Surcharge `schema.model_json_schema()` quand un champ dépend d'un état dynamique (ex : la
+    # liste des types de fournisseurs LLM disponibles, injectée en `enum`).
+    get_config_schema: Callable[[], dict[str, Any]] | None = None
+    # Transforme les valeurs validées juste avant persistance — reçoit (nouvelles valeurs,
+    # override existant ou None). Utilisé pour les champs secrets (Epic 9, interface-first) :
+    # chiffrer une nouvelle valeur non vide, ou conserver le secret déjà stocké si le champ est
+    # soumis vide (« ne pas changer »).
+    pre_store: Callable[[dict[str, Any], dict[str, Any] | None], dict[str, Any]] | None = None
+
+    def json_schema(self) -> dict[str, Any]:
+        if self.get_config_schema:
+            return self.get_config_schema()
+        return self.schema.model_json_schema()
 
 
 _SECTIONS: dict[str, SettingsSection] = {}

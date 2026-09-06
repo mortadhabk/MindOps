@@ -61,7 +61,7 @@ Synchronisation : `POST /connectors/{name}/sync` avec un corps JSON portant les 
 
 ## Discuter avec l'agent (Epic 3)
 
-L'orchestrateur agentique est construit avec **LangGraph** (boucle LLM ↔ outils comme un graphe d'états) et **Ollama** en local par défaut (`LLM_PROVIDER=ollama`, `LLM_MODEL=llama3.1:8b` dans `.env` — nécessite `ollama pull llama3.1:8b` et Ollama lancé sur la machine hôte).
+L'orchestrateur agentique est construit avec **LangGraph** (boucle LLM ↔ outils comme un graphe d'états) et **Ollama** en local par défaut (`LLM_PROVIDER_KIND=ollama`, `LLM_MODEL=llama3.1:8b` dans `.env` — nécessite `ollama pull llama3.1:8b` et Ollama lancé sur la machine hôte). Changeable pour n'importe quel fournisseur distant directement depuis l'onglet **Paramètres** (Epic 9), sans toucher à `.env` — voir plus bas.
 
 ```bash
 curl -N -X POST http://localhost:8000/agent/chat \
@@ -139,11 +139,33 @@ Un second onglet dans `/demo` (« Studio ») ajoute une interface graphique pour
 
 Un troisième onglet dans `/demo` (« Paramètres ») permet de piloter les réglages non-secrets du système depuis l'interface, avec effet immédiat (ou clairement indiqué comme différé) et sans redémarrer le conteneur — voir la proposition complète dans [`management/epic-9-parametrage-agent.md`](../management/epic-9-parametrage-agent.md).
 
-- **Sections** (une par domaine, chacune génère son formulaire depuis un schéma Pydantic — même mécanisme que `Connector.config_schema`, Epic 8) : **Gating** (politique de confiance par type d'action, seuil de confiance minimal — enfin pilotable sans redémarrage, la démonstration clé du projet US-406), **RAG** (taille/chevauchement des chunks, seuil de similarité — modèle d'embeddings affiché en lecture seule, non éditable), **Agent / LLM** (modèle Ollama, URL du serveur), **Journalisation** (niveau de log).
+- **Sections** (une par domaine, chacune génère son formulaire depuis un schéma Pydantic — même mécanisme que `Connector.config_schema`, Epic 8) : **Gating** (politique de confiance par type d'action, seuil de confiance minimal — enfin pilotable sans redémarrage, la démonstration clé du projet US-406), **RAG** (taille/chevauchement des chunks, seuil de similarité — modèle d'embeddings affiché en lecture seule, non éditable), **Agent / LLM** (fournisseur, modèle, URL, clé API — voir ci-dessous), **Journalisation** (niveau de log).
 - **Effet immédiat** pour la plupart des sections : `gating`, `rag` et `connectors` relisent déjà leur configuration à chaque appel — aucun cache à invalider. Seul le client LLM en cache (`agent.llm_client.get_llm_client`) est explicitement invalidé à la sauvegarde de la section Agent.
-- **Sécurité** : `database_url`, `llm_api_key`, `github_token`, `email_api_key`, `api_key` ne sont jamais exposés par `/settings/*` — seuls les paramètres opérationnels sont éditables. `/settings/*` n'est pas protégé par authentification pour l'instant (comme le reste de l'API, US-701/Epic 7 non implémentée) — limitation connue du POC.
-- Nouveaux endpoints : `GET /settings/sections`, `PATCH /settings/{key}`, `DELETE /settings/{key}` (réinitialise à la valeur `.env`). Chaque changement est journalisé (`settings.updated`/`settings.reset`) dans l'audit existant (Epic 5).
+- **Sécurité** : `database_url`, `github_token`, `email_api_key`, `api_key` ne sont jamais exposés par `/settings/*`. Exception délibérée pour la clé API du modèle LLM (voir ci-dessous) — décision produit explicite, interface-first plutôt que `.env`. `/settings/*` n'est pas protégé par authentification pour l'instant (comme le reste de l'API, US-701/Epic 7 non implémentée) — limitation connue du POC.
+- Nouveaux endpoints : `GET /settings/sections`, `PATCH /settings/{key}`, `DELETE /settings/{key}` (réinitialise à la valeur `.env`). Chaque changement est journalisé (`settings.updated`/`settings.reset`) dans l'audit existant (Epic 5) — un secret y est toujours masqué, jamais en clair.
 - Stockage : nouvelle table `app_settings` (override par section), chargée en mémoire au démarrage — les modules ne font jamais de lecture DB à chaque appel.
+
+### Choisir n'importe quel modèle LLM depuis l'interface
+
+La section **Agent / LLM** permet de choisir directement, depuis le navigateur, le fournisseur (Ollama local, ou distant), le modèle, l'URL et la clé API — sans toucher à `.env` ni redémarrer. Architecture orientée objet (`app/agent/providers/`, un `LLMProvider` par famille de client, comme `Connector` pour les sources de données) :
+
+| `llm_provider_kind` | Client | Couvre |
+|---|---|---|
+| `ollama` | `ChatOllama` | Modèle local, aucune clé API |
+| `openai_compatible` | `ChatOpenAI` (base_url personnalisable) | GPT (OpenAI), **DeepSeek**, **Kimi/Moonshot**, OpenRouter, Groq, ... |
+| `anthropic` | `ChatAnthropic` | Claude (API native, format différent d'OpenAI) |
+
+**Clé API chiffrée avant stockage** (`cryptography.Fernet`, clé maîtresse `SETTINGS_ENCRYPTION_KEY` dans `.env` — le seul secret qui reste requis côté serveur) — jamais réaffichée en clair une fois sauvegardée : le formulaire montre un badge « déjà configurée » et un champ vide, soumettre vide conserve la clé existante.
+
+```bash
+# Générer la clé de chiffrement (une fois) :
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# Basculer sur DeepSeek depuis l'interface (équivalent curl) :
+curl -X PATCH http://localhost:8000/settings/agent \
+  -H "Content-Type: application/json" \
+  -d '{"llm_provider_kind": "openai_compatible", "llm_model": "deepseek-chat", "base_url": "https://api.deepseek.com/v1", "api_key": "sk-..."}'
+```
 
 ```bash
 curl http://localhost:8000/settings/sections

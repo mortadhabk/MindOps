@@ -17,10 +17,16 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
 
-    llm_provider: str = Field(default="ollama", alias="LLM_PROVIDER")
-    llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")
+    # Valeurs de démarrage avant toute personnalisation depuis l'onglet Paramètres (Epic 9,
+    # interface-first) : le fournisseur/modèle/clé effectifs vivent ensuite dans `app_settings`
+    # (base de données, clé chiffrée) — voir app/agent/settings.py.
+    llm_provider_kind: str = Field(default="ollama", alias="LLM_PROVIDER_KIND")
     llm_model: str = Field(default="llama3.1:8b", alias="LLM_MODEL")
-    ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
+    llm_base_url: str = Field(default="http://localhost:11434", alias="LLM_BASE_URL")
+    # Clé de chiffrement symétrique (Fernet) pour les secrets saisis depuis l'UI (ex : clé API
+    # d'un modèle distant) — le seul secret qui doit encore vivre dans .env. Générer avec :
+    # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    settings_encryption_key: str | None = Field(default=None, alias="SETTINGS_ENCRYPTION_KEY")
 
     github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
 

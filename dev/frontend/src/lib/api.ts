@@ -27,6 +27,11 @@ export interface JsonSchemaProperty {
   description?: string;
   default?: unknown;
   examples?: unknown[];
+  enum?: string[];
+  pattern?: string;
+  format?: string;
+  minimum?: number;
+  maximum?: number;
 }
 
 export interface ConnectorConfigSchema {

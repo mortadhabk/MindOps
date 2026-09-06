@@ -24,7 +24,7 @@ def _to_out(section: SettingsSection) -> SettingsSectionOut:
         display_name=section.display_name,
         description=section.description,
         effect=section.effect,
-        config_schema=section.schema.model_json_schema(),
+        config_schema=section.json_schema(),
         current_values=section.get_current_values(),
         read_only=section.get_read_only(),
         has_override=store.get_override(section.key) is not None,
@@ -70,13 +70,21 @@ async def update_settings_section(
         ) from exc
 
     before = section.get_current_values()
-    await store.set_override(db, key, validated)
+    to_store = validated
+    if section.pre_store is not None:
+        # Ex: chiffrer une clé API nouvellement saisie, ou conserver celle déjà stockée si le
+        # champ arrive vide ("ne pas changer") — voir agent.settings._pre_store.
+        to_store = section.pre_store(validated, store.get_override(key))
+    await store.set_override(db, key, to_store)
     if section.apply is not None:
-        section.apply(validated)
+        section.apply(to_store)
+    # get_current_values() plutôt que `validated`/`to_store` dans l'audit : un secret y est
+    # toujours masqué, jamais le payload brut soumis ni sa forme chiffrée.
+    after = section.get_current_values()
     await write_log(
         db,
         "settings.updated",
-        {"section": key, "before": before, "after": validated},
+        {"section": key, "before": before, "after": after},
         source="settings",
     )
     return _to_out(section)

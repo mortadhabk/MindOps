@@ -12,8 +12,24 @@ interface SettingsSectionCardProps {
   onReset: (key: string) => Promise<void>;
 }
 
+/** Les champs `format: "password"` ne doivent jamais être préremplis avec le placeholder masqué
+ * renvoyé par le serveur ("••••••••") — sinon le soumettre tel quel chiffrerait ce placeholder
+ * comme si c'était la vraie clé. Vide = "ne pas changer", géré côté serveur (agent.settings._pre_store). */
+function blankPasswordFields(
+  section: SettingsSection,
+  values: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...values };
+  for (const [key, property] of Object.entries(section.config_schema.properties)) {
+    if (property.format === "password") next[key] = "";
+  }
+  return next;
+}
+
 export function SettingsSectionCard({ section, onSave, onReset }: SettingsSectionCardProps) {
-  const [values, setValues] = useState<Record<string, unknown>>(section.current_values);
+  const [values, setValues] = useState<Record<string, unknown>>(() =>
+    blankPasswordFields(section, section.current_values),
+  );
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +38,8 @@ export function SettingsSectionCard({ section, onSave, onReset }: SettingsSectio
   // le formulaire — mais jamais pendant que l'utilisateur est en train de le remplir sans avoir
   // encore sauvegardé, pour ne pas écraser sa saisie en cours.
   useEffect(() => {
-    if (!saving && !resetting) setValues(section.current_values);
-  }, [section.current_values, saving, resetting]);
+    if (!saving && !resetting) setValues(blankPasswordFields(section, section.current_values));
+  }, [section, saving, resetting]);
 
   const fields = Object.entries(section.config_schema.properties);
   const required = new Set(section.config_schema.required ?? []);
@@ -69,6 +85,7 @@ export function SettingsSectionCard({ section, onSave, onReset }: SettingsSectio
             required={required.has(key)}
             value={values[key]}
             onChange={(value) => setValues((prev) => ({ ...prev, [key]: value }))}
+            hasStoredSecret={Boolean(section.current_values[key])}
           />
         ))}
 
