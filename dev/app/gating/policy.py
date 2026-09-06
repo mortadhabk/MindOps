@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from app.config import get_settings
+from app.gating.settings import get_effective_gating_settings
 
 
 class Decision(StrEnum):
@@ -10,11 +10,12 @@ class Decision(StrEnum):
 
 
 def evaluate(action_type: str, confidence: float) -> Decision:
-    """Politique de confiance : configurable par type d'action, sans redéploiement (US-402, US-406).
+    """Politique de confiance : configurable par type d'action, sans redéploiement (US-402, US-406)
+    — via `.env` par défaut, ou depuis l'onglet Paramètres (Epic 9) qui prend le dessus.
 
     Fonction pure : ne lit que la configuration en mémoire, aucun accès base de données ni réseau.
     """
-    settings = get_settings()
+    settings = get_effective_gating_settings()
     configured = settings.gating_policy.get(action_type, Decision.REQUIRE_VALIDATION.value)
     decision = Decision(configured)
 

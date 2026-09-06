@@ -37,6 +37,14 @@ class ConnectorConfigError(AppError):
     status_code = 422
 
 
+class SettingsSectionNotFoundError(AppError):
+    status_code = 404
+
+
+class SettingsValidationError(AppError):
+    status_code = 422
+
+
 class ActionNotFoundError(AppError):
     status_code = 404
 

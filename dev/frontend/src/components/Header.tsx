@@ -4,12 +4,19 @@ import { Sparkles } from "lucide-react";
 import { fetchHealth } from "../lib/api";
 import { TabSwitch } from "./ui";
 
-export type ActiveTab = "assistant" | "studio";
+export type ActiveTab = "assistant" | "studio" | "settings";
 
 const TAB_OPTIONS: { value: ActiveTab; label: string }[] = [
   { value: "assistant", label: "Assistant" },
   { value: "studio", label: "Studio" },
+  { value: "settings", label: "Paramètres" },
 ];
+
+const TAB_SUBTITLES: Record<ActiveTab, string> = {
+  assistant: "Chat, file de validation et journal d'audit — en un seul endroit.",
+  studio: "Glisser une source sur le canvas pour la relier à l'Orchestrateur (Epic 8).",
+  settings: "Pilote tous les réglages non-secrets de l'agent, sans redémarrage (Epic 9).",
+};
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -36,11 +43,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
             </span>
             Agent IA
           </div>
-          <p className="mt-1.5 text-sm text-slate-400">
-            {activeTab === "assistant"
-              ? "Chat, file de validation et journal d'audit — en un seul endroit."
-              : "Glisser une source sur le canvas pour la relier à l'Orchestrateur (Epic 8)."}
-          </p>
+          <p className="mt-1.5 text-sm text-slate-400">{TAB_SUBTITLES[activeTab]}</p>
         </div>
         <div className="flex items-center gap-3 self-start">
           <TabSwitch value={activeTab} options={TAB_OPTIONS} onChange={onTabChange} />

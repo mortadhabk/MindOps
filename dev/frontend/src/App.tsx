@@ -5,6 +5,7 @@ import { AuditLogPanel } from "./components/AuditLogPanel";
 import { ChatPanel } from "./components/ChatPanel";
 import { GatingQueue } from "./components/GatingQueue";
 import { type ActiveTab, Header } from "./components/Header";
+import { SettingsView } from "./settings/SettingsView";
 import { StudioView } from "./studio/StudioView";
 
 export default function App() {
@@ -24,7 +25,7 @@ export default function App() {
         )}
       >
         <Header activeTab={activeTab} onTabChange={setActiveTab} />
-        {activeTab === "assistant" ? (
+        {activeTab === "assistant" && (
           <main className="grid gap-5 px-6 pb-10 lg:grid-cols-[1.35fr_1fr]">
             <ChatPanel onProposal={bumpRefresh} />
             <div className="flex flex-col gap-5">
@@ -32,9 +33,15 @@ export default function App() {
               <AuditLogPanel refreshSignal={refreshSignal} />
             </div>
           </main>
-        ) : (
+        )}
+        {activeTab === "studio" && (
           <main className="px-6 pb-10">
             <StudioView />
+          </main>
+        )}
+        {activeTab === "settings" && (
+          <main className="px-6 pb-10">
+            <SettingsView />
           </main>
         )}
       </div>

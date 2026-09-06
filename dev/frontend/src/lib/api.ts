@@ -214,6 +214,52 @@ export async function deleteConnectorInstance(id: number): Promise<void> {
   if (!response.ok) throw new Error(`DELETE /connectors/instances/${id} -> ${response.status}`);
 }
 
+export type SettingsEffect = "immediate" | "deferred";
+
+export interface SettingsConfigSchema {
+  properties: Record<string, JsonSchemaProperty>;
+  required?: string[];
+}
+
+export interface SettingsSection {
+  key: string;
+  display_name: string;
+  description: string;
+  effect: SettingsEffect;
+  config_schema: SettingsConfigSchema;
+  current_values: Record<string, unknown>;
+  read_only: Record<string, unknown>;
+  has_override: boolean;
+}
+
+export async function fetchSettingsSections(): Promise<SettingsSection[]> {
+  const response = await fetch("/settings/sections");
+  if (!response.ok) throw new Error(`GET /settings/sections -> ${response.status}`);
+  return response.json();
+}
+
+export async function updateSettingsSection(
+  key: string,
+  value: Record<string, unknown>,
+): Promise<SettingsSection> {
+  const response = await fetch(`/settings/${key}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(value),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? `PATCH /settings/${key} -> ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function resetSettingsSection(key: string): Promise<SettingsSection> {
+  const response = await fetch(`/settings/${key}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(`DELETE /settings/${key} -> ${response.status}`);
+  return response.json();
+}
+
 export async function syncConnectorInstance(id: number): Promise<ConnectorInstance> {
   const response = await fetch(`/connectors/instances/${id}/sync`, { method: "POST" });
   if (!response.ok) throw new Error(`POST /connectors/instances/${id}/sync -> ${response.status}`);

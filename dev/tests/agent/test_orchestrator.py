@@ -25,7 +25,7 @@ def sensitive_tool() -> FakeSensitiveTool:
 
 def _set_gating_policy(monkeypatch, policy_map: dict[str, str], min_confidence: float = 0.8):
     fake_settings = SimpleNamespace(gating_policy=policy_map, gating_min_confidence=min_confidence)
-    monkeypatch.setattr("app.gating.policy.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("app.gating.policy.get_effective_gating_settings", lambda: fake_settings)
 
 
 def _sensitive_tool_call(call_id: str = "call-1") -> AIMessage:

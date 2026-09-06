@@ -12,6 +12,7 @@ from app.connectors import models as connectors_models  # noqa: F401  idem
 from app.core.database import Base
 from app.gating import models as gating_models  # noqa: F401  registre les tables sur Base.metadata
 from app.rag import models as rag_models  # noqa: F401  registre les tables sur Base.metadata
+from app.settings import models as settings_models  # noqa: F401  idem
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

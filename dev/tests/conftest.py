@@ -1,11 +1,23 @@
 from collections.abc import AsyncGenerator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
 from app.main import app
+from app.settings import store as settings_store
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_overrides_cache():
+    """`settings_store._overrides` est un cache mémoire global (Epic 9, voir sa docstring) — pas
+    une transaction DB, donc jamais annulé par le rollback de `db_session`. Sans ce nettoyage, un
+    override posé par un test resterait visible par tous les tests suivants du même run."""
+    settings_store._overrides.clear()
+    yield
+    settings_store._overrides.clear()
 
 
 @pytest_asyncio.fixture

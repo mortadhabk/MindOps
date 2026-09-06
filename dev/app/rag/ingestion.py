@@ -1,9 +1,9 @@
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.models import Chunk, Document
+from app.rag.settings import get_effective_rag_settings
 
 DEFAULT_MAX_TOKENS = 200
 DEFAULT_OVERLAP = 20
@@ -41,7 +41,7 @@ async def ingest_document(
     overlap: int | None = None,
     connector_instance_id: int | None = None,
 ) -> tuple[Document, int]:
-    settings = get_settings()
+    settings = get_effective_rag_settings()
     max_tokens = max_tokens if max_tokens is not None else settings.rag_chunk_max_tokens
     overlap = overlap if overlap is not None else settings.rag_chunk_overlap
 

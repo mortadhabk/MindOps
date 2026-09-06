@@ -135,6 +135,23 @@ Un second onglet dans `/demo` (« Studio ») ajoute une interface graphique pour
 - Le connecteur `sharepoint` est pour l'instant un **mock fidèle** (même `config_schema`, même contrat `Connector` que la future implémentation Microsoft Graph API) — voir la section 4.3 de la proposition pour la portée MVP/V2.
 - **Traçabilité et suppression en cascade** : chaque document ingéré via une instance de connecteur porte `connector_instance_id` (exposé dans `GET /rag/search`, avec `document_source`) — supprimer une instance depuis le Studio supprime automatiquement (`ON DELETE CASCADE`, côté base) les documents et fragments qu'elle avait fait ingérer.
 
+## Paramétrage de l'agent (Epic 9)
+
+Un troisième onglet dans `/demo` (« Paramètres ») permet de piloter les réglages non-secrets du système depuis l'interface, avec effet immédiat (ou clairement indiqué comme différé) et sans redémarrer le conteneur — voir la proposition complète dans [`management/epic-9-parametrage-agent.md`](../management/epic-9-parametrage-agent.md).
+
+- **Sections** (une par domaine, chacune génère son formulaire depuis un schéma Pydantic — même mécanisme que `Connector.config_schema`, Epic 8) : **Gating** (politique de confiance par type d'action, seuil de confiance minimal — enfin pilotable sans redémarrage, la démonstration clé du projet US-406), **RAG** (taille/chevauchement des chunks, seuil de similarité — modèle d'embeddings affiché en lecture seule, non éditable), **Agent / LLM** (modèle Ollama, URL du serveur), **Journalisation** (niveau de log).
+- **Effet immédiat** pour la plupart des sections : `gating`, `rag` et `connectors` relisent déjà leur configuration à chaque appel — aucun cache à invalider. Seul le client LLM en cache (`agent.llm_client.get_llm_client`) est explicitement invalidé à la sauvegarde de la section Agent.
+- **Sécurité** : `database_url`, `llm_api_key`, `github_token`, `email_api_key`, `api_key` ne sont jamais exposés par `/settings/*` — seuls les paramètres opérationnels sont éditables. `/settings/*` n'est pas protégé par authentification pour l'instant (comme le reste de l'API, US-701/Epic 7 non implémentée) — limitation connue du POC.
+- Nouveaux endpoints : `GET /settings/sections`, `PATCH /settings/{key}`, `DELETE /settings/{key}` (réinitialise à la valeur `.env`). Chaque changement est journalisé (`settings.updated`/`settings.reset`) dans l'audit existant (Epic 5).
+- Stockage : nouvelle table `app_settings` (override par section), chargée en mémoire au démarrage — les modules ne font jamais de lecture DB à chaque appel.
+
+```bash
+curl http://localhost:8000/settings/sections
+curl -X PATCH http://localhost:8000/settings/gating \
+  -H "Content-Type: application/json" \
+  -d '{"gating_policy": {"send_email": "auto_execute"}, "gating_min_confidence": 0.8}'
+```
+
 ## Traçabilité (audit, Epic 5)
 
 Le module `audit` journalise, dans la table persistante `audit_logs`, chaque appel LLM (`agent.llm_call`), proposition d'action (`agent.action_proposed`) et décision de validation (`gating.decision`) — c'est le point de passage obligé (`audit.service.write_log`) utilisé par `agent` et `gating`, jamais contourné.

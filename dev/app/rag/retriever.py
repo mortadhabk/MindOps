@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.models import Chunk
+from app.rag.settings import get_effective_rag_settings
 from app.rag.vector_store import nearest_chunks
 
 
@@ -16,7 +16,7 @@ async def search(
     threshold = (
         similarity_threshold
         if similarity_threshold is not None
-        else get_settings().rag_similarity_threshold
+        else get_effective_rag_settings().rag_similarity_threshold
     )
 
     [query_vector] = await provider.embed([query])
