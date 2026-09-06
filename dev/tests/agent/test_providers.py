@@ -52,3 +52,18 @@ def test_anthropic_provider_builds_a_chat_anthropic_client():
     )
     assert isinstance(client, ChatAnthropic)
     assert client.model == "claude-opus-5"
+
+
+def test_anthropic_provider_defaults_to_the_real_anthropic_endpoint_when_no_url_given():
+    client = AnthropicProvider().build_client(
+        model="claude-opus-5", credentials={"api_key": "sk-ant-test"}
+    )
+    assert client.anthropic_api_url == "https://api.anthropic.com"
+
+
+def test_anthropic_provider_uses_a_custom_url_when_given():
+    client = AnthropicProvider().build_client(
+        model="claude-opus-5",
+        credentials={"api_key": "sk-ant-test", "base_url": "https://proxy.example.com"},
+    )
+    assert client.anthropic_api_url == "https://proxy.example.com"

@@ -13,6 +13,22 @@ interface AgentSettingsFieldsProps {
   onChange: (key: string, value: unknown) => void;
 }
 
+function urlPlaceholder(vendorKey: string, vendor: VendorInfo | undefined): string {
+  if (vendor?.default_base_url) return vendor.default_base_url;
+  if (vendorKey === "anthropic") return "https://api.anthropic.com";
+  return "http://localhost:11434";
+}
+
+function urlHint(vendorKey: string): string {
+  if (vendorKey === "anthropic") {
+    return "Claude a une adresse fixe (api.anthropic.com) — ne renseigner que pour un proxy d'entreprise ou un déploiement régional.";
+  }
+  if (vendorKey === "ollama") {
+    return "URL de ton serveur Ollama local — laisser vide pour utiliser celle définie côté serveur (.env).";
+  }
+  return "Préremplie selon le fournisseur, modifiable (proxy, région différente, ...).";
+}
+
 /** Section "agent" : spécialisée plutôt que rendue par la boucle générique de champs — le choix
  * du fournisseur détermine dynamiquement l'URL par défaut et les modèles suggérés, un
  * comportement inter-champs que le mapping JSON Schema générique ne couvre pas (même logique que
@@ -79,16 +95,17 @@ export function AgentSettingsFields({ section, values, onChange }: AgentSettings
       <div>
         <label className="mb-1 block text-[11px] font-medium text-slate-400">
           URL du serveur
+          {currentVendorKey === "anthropic" && (
+            <span className="ml-1.5 font-normal text-slate-600">(optionnel)</span>
+          )}
         </label>
         <input
           value={String(values.base_url ?? "")}
           onChange={(event) => onChange("base_url", event.target.value)}
-          placeholder={currentVendor?.default_base_url ?? "http://localhost:11434"}
+          placeholder={urlPlaceholder(currentVendorKey, currentVendor)}
           className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-100 focus:border-indigo-400/50 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
         />
-        <p className="mt-1 text-[10px] text-slate-600">
-          Préremplie selon le fournisseur, modifiable (proxy, région différente, ...).
-        </p>
+        <p className="mt-1 text-[10px] text-slate-600">{urlHint(currentVendorKey)}</p>
       </div>
 
       {apiKeyProperty && (
