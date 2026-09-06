@@ -14,6 +14,8 @@ export default defineConfig(({ command }) => ({
       "/gating": API_TARGET,
       "/audit": API_TARGET,
       "/connectors": API_TARGET,
+      "/settings": API_TARGET,
+      "/rag": API_TARGET,
       "/health": API_TARGET,
     },
   },
