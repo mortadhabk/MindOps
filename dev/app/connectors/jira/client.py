@@ -3,7 +3,7 @@ from datetime import datetime
 
 import httpx
 
-from app.connectors.credential_settings import get_jira_cloud_credentials, get_jira_server_token
+from app.connectors.jira.settings import get_jira_cloud_credentials, get_jira_server_token
 from app.core.exceptions import ConnectorConfigError, ConnectorError
 
 PAGE_SIZE = 100

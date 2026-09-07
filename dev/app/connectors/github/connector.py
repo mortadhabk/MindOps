@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import httpx
 
 from app.connectors.base import Connector
-from app.connectors.credential_settings import get_github_token
 from app.connectors.github.schemas import GitHubConnectorConfig, GitHubIssue
+from app.connectors.github.settings import get_github_token
 from app.core.exceptions import ConnectorError
 from app.rag.schemas import DocumentIn
 

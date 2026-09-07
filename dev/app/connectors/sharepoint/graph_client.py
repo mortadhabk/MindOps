@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
 
-from app.connectors.credential_settings import get_sharepoint_credentials
+from app.connectors.sharepoint.settings import get_sharepoint_credentials
 from app.core.exceptions import ConnectorConfigError, ConnectorError
 
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"

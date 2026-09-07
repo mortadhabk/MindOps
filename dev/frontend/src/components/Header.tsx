@@ -14,8 +14,8 @@ const TAB_OPTIONS: { value: ActiveTab; label: string }[] = [
 
 const TAB_SUBTITLES: Record<ActiveTab, string> = {
   assistant: "La discussion avec l'agent, sans distraction.",
-  studio: "Brancher et configurer les sources de connaissance, identifiants inclus.",
-  admin: "Un objectif par page : validation, audit, agent, RAG, confiance, journalisation.",
+  studio: "Glisser une source sur le canvas pour la relier à l'Orchestrateur.",
+  admin: "Un objectif par page : validation, audit, agent, RAG, confiance, connecteurs, logs.",
 };
 
 interface HeaderProps {

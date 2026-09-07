@@ -5,7 +5,9 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.agent.settings  # noqa: F401  effet de bord : register_section au chargement
-import app.connectors.credential_settings  # noqa: F401  idem
+import app.connectors.github.settings  # noqa: F401  idem
+import app.connectors.jira.settings  # noqa: F401  idem
+import app.connectors.sharepoint.settings  # noqa: F401  idem
 import app.core.logging_settings  # noqa: F401  idem
 import app.gating.settings  # noqa: F401  idem
 import app.rag.settings  # noqa: F401  idem
