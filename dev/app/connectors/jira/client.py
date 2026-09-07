@@ -3,31 +3,31 @@ from datetime import datetime
 
 import httpx
 
-from app.config import get_settings
+from app.connectors.credential_settings import get_jira_cloud_credentials, get_jira_server_token
 from app.core.exceptions import ConnectorConfigError, ConnectorError
 
 PAGE_SIZE = 100
 
 
 def _auth_headers(deployment_type: str, credential_alias: str) -> dict[str, str]:
-    settings = get_settings()
-
     if deployment_type == "cloud":
-        creds = settings.jira_cloud_credentials.get(credential_alias)
+        creds = get_jira_cloud_credentials(credential_alias)
         if creds is None:
             raise ConnectorConfigError(
                 f"Aucun identifiant Jira Cloud configuré pour l'alias « {credential_alias} » "
-                "(voir JIRA_CLOUD_EMAIL / JIRA_CLOUD_API_TOKEN dans .env)"
+                "(à saisir dans Paramètres > Connecteurs — identifiants, ou JIRA_CLOUD_EMAIL / "
+                "JIRA_CLOUD_API_TOKEN dans .env)"
             )
         token = base64.b64encode(f"{creds.email}:{creds.api_token}".encode()).decode()
         return {"Authorization": f"Basic {token}"}
 
     if deployment_type == "server":
-        pat = settings.jira_server_credentials.get(credential_alias)
+        pat = get_jira_server_token(credential_alias)
         if pat is None:
             raise ConnectorConfigError(
                 f"Aucun identifiant Jira Server configuré pour l'alias « {credential_alias} » "
-                "(voir JIRA_SERVER_TOKEN dans .env)"
+                "(à saisir dans Paramètres > Connecteurs — identifiants, ou JIRA_SERVER_TOKEN "
+                "dans .env)"
             )
         return {"Authorization": f"Bearer {pat}"}
 

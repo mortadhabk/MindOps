@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import httpx
 
-from app.config import get_settings
 from app.connectors.base import Connector
+from app.connectors.credential_settings import get_github_token
 from app.connectors.github.schemas import GitHubConnectorConfig, GitHubIssue
 from app.core.exceptions import ConnectorError
 from app.rag.schemas import DocumentIn
@@ -34,7 +34,7 @@ class GitHubConnector(Connector):
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        token = get_settings().github_token
+        token = get_github_token()
         if token:
             headers["Authorization"] = f"Bearer {token}"
         return headers

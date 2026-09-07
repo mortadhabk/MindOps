@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
 
-from app.config import get_settings
+from app.connectors.credential_settings import get_sharepoint_credentials
 from app.core.exceptions import ConnectorConfigError, ConnectorError
 
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
@@ -79,11 +79,12 @@ async def get_access_token(credential_alias: str) -> str:
     if cached and cached[1] > time.monotonic() + 60:
         return cached[0]
 
-    creds = get_settings().sharepoint_credentials.get(credential_alias)
+    creds = get_sharepoint_credentials(credential_alias)
     if creds is None:
         raise ConnectorConfigError(
-            f"Aucun identifiant SharePoint configuré pour l'alias « {credential_alias} » (voir "
-            "SHAREPOINT_TENANT_ID / SHAREPOINT_CLIENT_ID / SHAREPOINT_CLIENT_SECRET dans .env)"
+            f"Aucun identifiant SharePoint configuré pour l'alias « {credential_alias} » (à "
+            "saisir dans Paramètres > Connecteurs — identifiants, ou SHAREPOINT_TENANT_ID / "
+            "SHAREPOINT_CLIENT_ID / SHAREPOINT_CLIENT_SECRET dans .env)"
         )
 
     async with httpx.AsyncClient(timeout=10.0) as client:
