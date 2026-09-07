@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from app.connectors.base import Connector
 from app.connectors.document.connector import DocumentConnector
 from app.connectors.github.connector import GitHubConnector
+from app.connectors.jira.connector import JiraConnector
 from app.connectors.mock.connector import MockConnector
 from app.connectors.sharepoint.connector import SharePointConnector
 from app.core.exceptions import ConnectorNotFoundError
@@ -10,6 +11,7 @@ from app.core.exceptions import ConnectorNotFoundError
 _CONNECTORS: dict[str, Connector] = {
     "document": DocumentConnector(),
     "github": GitHubConnector(),
+    "jira": JiraConnector(),
     "mock": MockConnector(),
     "sharepoint": SharePointConnector(),
 }

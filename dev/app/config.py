@@ -11,6 +11,11 @@ class SharePointCredentials(NamedTuple):
     client_secret: str
 
 
+class JiraCloudCredentials(NamedTuple):
+    email: str
+    api_token: str
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -68,6 +73,30 @@ class Settings(BaseSettings):
                 client_secret=self.sharepoint_client_secret,
             )
         }
+
+    # Connecteur Jira (Epic 10) — deux jeux d'identifiants distincts selon `deployment_type`
+    # (voir app/connectors/jira/schemas.py) : Jira Cloud s'authentifie par email + API token
+    # (Basic Auth), Jira Server/Data Center par Personal Access Token (Bearer). Un seul alias
+    # "default" par déploiement pour l'instant, même logique que sharepoint_credentials.
+    jira_cloud_email: str | None = Field(default=None, alias="JIRA_CLOUD_EMAIL")
+    jira_cloud_api_token: str | None = Field(default=None, alias="JIRA_CLOUD_API_TOKEN")
+    jira_server_token: str | None = Field(default=None, alias="JIRA_SERVER_TOKEN")
+
+    @property
+    def jira_cloud_credentials(self) -> dict[str, JiraCloudCredentials]:
+        if not (self.jira_cloud_email and self.jira_cloud_api_token):
+            return {}
+        return {
+            "default": JiraCloudCredentials(
+                email=self.jira_cloud_email, api_token=self.jira_cloud_api_token
+            )
+        }
+
+    @property
+    def jira_server_credentials(self) -> dict[str, str]:
+        if not self.jira_server_token:
+            return {}
+        return {"default": self.jira_server_token}
 
     email_api_key: str | None = Field(default=None, alias="EMAIL_API_KEY")
     email_from: str | None = Field(default=None, alias="EMAIL_FROM")

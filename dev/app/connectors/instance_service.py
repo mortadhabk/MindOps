@@ -93,7 +93,10 @@ async def run_sync(db: AsyncSession, instance_id: int, provider: EmbeddingProvid
     synced = 0
     errors: list[str] = []
     try:
-        items = await connector.fetch_items(**instance.config)
+        kwargs = dict(instance.config)
+        if connector.supports_incremental_sync and instance.last_synced_at is not None:
+            kwargs["since"] = instance.last_synced_at
+        items = await connector.fetch_items(**kwargs)
         for item in items:
             try:
                 document = connector.to_document(item)

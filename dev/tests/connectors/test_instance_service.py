@@ -161,6 +161,33 @@ async def test_delete_instance_cascades_to_its_ingested_documents_and_chunks(
     assert remaining_chunks == []
 
 
+async def test_run_sync_injects_since_only_for_connectors_that_support_it(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    received_kwargs: list[dict] = []
+
+    async def _capture(self, **kwargs):
+        received_kwargs.append(kwargs)
+        return []
+
+    monkeypatch.setattr(MockConnector, "supports_incremental_sync", True)
+    monkeypatch.setattr(MockConnector, "fetch_items", _capture)
+
+    instance = await instance_service.create_instance(
+        db_session, connector_type="mock", display_name="Source incrémentale", config={}
+    )
+
+    # Premier sync : jamais synchronisé avant, pas de `since` à injecter.
+    await instance_service.run_sync(db_session, instance.id, FakeEmbeddingProvider())
+    assert "since" not in received_kwargs[0]
+
+    # Deuxième sync : `since` doit porter la date de la sync précédente.
+    await db_session.refresh(instance)
+    first_synced_at = instance.last_synced_at
+    await instance_service.run_sync(db_session, instance.id, FakeEmbeddingProvider())
+    assert received_kwargs[1]["since"] == first_synced_at
+
+
 async def test_run_sync_marks_error_when_the_connector_itself_fails(
     db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ):
