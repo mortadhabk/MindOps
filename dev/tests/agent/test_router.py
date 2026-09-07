@@ -106,9 +106,11 @@ async def test_list_conversations_returns_most_recent_first(db_session: AsyncSes
         response = await client.get("/agent/conversations")
 
         assert response.status_code == 200
-        body = response.json()
-        assert [conv["id"] for conv in body] == ["conv-b", "conv-a"]
-        assert body[0]["title"] == "ça marche ?"
+        # Filtré aux deux ids du test : la base partagée par les tests (voir db_session dans
+        # conftest.py) peut porter d'autres conversations issues d'essais manuels antérieurs.
+        relevant = [conv for conv in response.json() if conv["id"] in ("conv-a", "conv-b")]
+        assert [conv["id"] for conv in relevant] == ["conv-b", "conv-a"]
+        assert relevant[0]["title"] == "ça marche ?"
 
 
 async def test_get_conversation_messages_returns_user_and_assistant_turns(

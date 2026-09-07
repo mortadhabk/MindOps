@@ -1,7 +1,14 @@
 from functools import lru_cache
+from typing import NamedTuple
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class SharePointCredentials(NamedTuple):
+    tenant_id: str
+    client_id: str
+    client_secret: str
 
 
 class Settings(BaseSettings):
@@ -35,6 +42,32 @@ class Settings(BaseSettings):
     settings_encryption_key: str | None = Field(default=None, alias="SETTINGS_ENCRYPTION_KEY")
 
     github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
+
+    # Connecteur SharePoint (Microsoft Graph API, app-only / client credentials) — un seul jeu
+    # d'identifiants pour l'instant, résolu sous l'alias "default" (voir
+    # app/connectors/sharepoint/schemas.py, champ credential_alias). Nécessite une App
+    # Registration Azure AD avec la permission d'application Sites.Selected (recommandé, accès
+    # limité au(x) site(s) explicitement autorisé(s) — voir README pour la procédure) ou
+    # Sites.Read.All (plus large, plus simple à mettre en place).
+    sharepoint_tenant_id: str | None = Field(default=None, alias="SHAREPOINT_TENANT_ID")
+    sharepoint_client_id: str | None = Field(default=None, alias="SHAREPOINT_CLIENT_ID")
+    sharepoint_client_secret: str | None = Field(default=None, alias="SHAREPOINT_CLIENT_SECRET")
+
+    @property
+    def sharepoint_credentials(self) -> dict[str, SharePointCredentials]:
+        if not (
+            self.sharepoint_tenant_id
+            and self.sharepoint_client_id
+            and self.sharepoint_client_secret
+        ):
+            return {}
+        return {
+            "default": SharePointCredentials(
+                tenant_id=self.sharepoint_tenant_id,
+                client_id=self.sharepoint_client_id,
+                client_secret=self.sharepoint_client_secret,
+            )
+        }
 
     email_api_key: str | None = Field(default=None, alias="EMAIL_API_KEY")
     email_from: str | None = Field(default=None, alias="EMAIL_FROM")

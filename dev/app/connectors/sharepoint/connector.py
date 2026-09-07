@@ -1,56 +1,39 @@
 from dataclasses import dataclass
 
+import httpx
+
 from app.connectors.base import Connector
+from app.connectors.document.extraction import extract_text
+from app.connectors.sharepoint import graph_client
 from app.connectors.sharepoint.schemas import SharePointConnectorConfig
+from app.core.exceptions import ConnectorConfigError
 from app.rag.schemas import DocumentIn
 
-FIXED_ITEMS: list[dict[str, str | int]] = [
-    {
-        "id": 1,
-        "title": "Procédure de remboursement fournisseur",
-        "text": (
-            "Tout remboursement fournisseur superieur a 5000 euros necessite une double "
-            "validation : le responsable achats, puis la direction financiere, avant tout "
-            "virement. En dessous de ce seuil, la validation du responsable achats suffit."
-        ),
-    },
-    {
-        "id": 2,
-        "title": "Politique de télétravail",
-        "text": (
-            "Les collaborateurs peuvent teletravailler jusqu'a 3 jours par semaine, sous reserve "
-            "de validation du manager. Le materiel (ecran, clavier) est fourni sur demande via "
-            "le portail RH, dans la limite d'un equipement par collaborateur."
-        ),
-    },
-]
+# .xlsx/.pptx/images non gérés pour l'instant — extract_text() (app/connectors/document) ne sait
+# extraire du texte que de .pdf/.docx/texte brut ; un fichier hors de cette liste est simplement
+# ignoré plutôt que de faire échouer toute la synchronisation.
+SUPPORTED_EXTENSIONS = {"pdf", "docx", "txt", "md"}
 
 
 @dataclass
-class SharePointListItem:
-    site_url: str
-    library_name: str
-    id: int
-    title: str
+class SharePointFileItem:
+    web_url: str
+    name: str
     text: str
 
 
 class SharePointConnector(Connector):
-    """Adapter *factice* pour l'instant (Epic 8, décision actée : pas de tenant Azure AD de test
-    disponible — voir management/epic-8-studio-connecteurs.md, section 4.3).
-
-    Expose le même `config_schema` et le même contrat `Connector` que la future implémentation
-    Microsoft Graph API (client credentials, permission `Sites.Selected`) : le jour où un tenant
-    réel est disponible, seuls `fetch_items()`/`to_document()` changeront — ni le Studio, ni les
-    endpoints `/connectors/*`, ni le formulaire de configuration n'auront à évoluer. C'est
-    précisément ce que cette Epic doit démontrer : l'abstraction généralise au-delà de GitHub.
-    """
+    """Synchronise récursivement tous les fichiers d'un dossier/bibliothèque SharePoint (Microsoft
+    Graph API, authentification application « client credentials ») dans la base de connaissances
+    RAG. `site_url` accepte soit l'URL d'un site SharePoint nu, soit — cas d'usage réel le plus
+    courant — l'URL copiée depuis le navigateur sur la page AllItems.aspx d'un dossier précis
+    (voir `graph_client.parse_sharepoint_url`)."""
 
     name = "sharepoint"
-    display_name = "SharePoint (liste)"
+    display_name = "SharePoint (dossier)"
     description = (
-        "Synchronise une liste SharePoint comme base de connaissances. Connecteur factice pour "
-        "l'instant (aucun tenant Azure AD de test disponible) : renvoie toujours les mêmes items."
+        "Synchronise récursivement tous les documents (PDF, Word, texte) d'un dossier ou d'une "
+        "bibliothèque SharePoint, via Microsoft Graph API."
     )
     config_schema = SharePointConnectorConfig
 
@@ -58,16 +41,41 @@ class SharePointConnector(Connector):
         self,
         *,
         site_url: str,
-        library_name: str = "Documents partagés",
+        library_name: str | None = None,
+        folder_path: str | None = None,
         credential_alias: str = "default",
-    ) -> list[SharePointListItem]:
-        return [
-            SharePointListItem(site_url=site_url, library_name=library_name, **item)
-            for item in FIXED_ITEMS
-        ]
+    ) -> list[SharePointFileItem]:
+        location = graph_client.parse_sharepoint_url(site_url)
+        if library_name:
+            location.library_name = library_name
+        if folder_path is not None:
+            location.folder_path = folder_path
 
-    def to_document(self, item: SharePointListItem) -> DocumentIn:
+        token = await graph_client.get_access_token(credential_alias)
+        async with httpx.AsyncClient(
+            base_url=graph_client.GRAPH_BASE_URL,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30.0,
+        ) as client:
+            drive_id = await graph_client.resolve_drive_id(
+                client, location.hostname, location.site_path, location.library_name
+            )
+            files = await graph_client.list_files_recursive(client, drive_id, location.folder_path)
+
+            items: list[SharePointFileItem] = []
+            for file in files:
+                suffix = file.name.rsplit(".", 1)[-1].lower() if "." in file.name else ""
+                if suffix not in SUPPORTED_EXTENSIONS:
+                    continue
+                raw_bytes = await graph_client.download_file(client, file.download_url)
+                try:
+                    text = extract_text(filename=file.name, raw_bytes=raw_bytes)
+                except ConnectorConfigError:
+                    continue  # fichier illisible (scanné, corrompu, ...) : ignoré, pas bloquant
+                items.append(SharePointFileItem(web_url=file.web_url, name=file.name, text=text))
+            return items
+
+    def to_document(self, item: SharePointFileItem) -> DocumentIn:
         return DocumentIn(
-            source=f"sharepoint:{item.site_url}/{item.library_name}#{item.id}",
-            content=f"{item.title}\n\n{item.text}",
+            source=f"sharepoint:{item.web_url}", content=f"{item.name}\n\n{item.text}"
         )
