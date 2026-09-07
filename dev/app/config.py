@@ -115,10 +115,17 @@ class Settings(BaseSettings):
     embedding_model: str = Field(
         default="paraphrase-multilingual-MiniLM-L12-v2", alias="EMBEDDING_MODEL"
     )
+    # Cross-encoder de reranking (app/rag/reranking) — multilingue (mMARCO) pour rester cohérent
+    # avec l'embedding multilingue ci-dessus ; réordonne les candidats de la recherche vectorielle,
+    # n'affecte jamais leur score de similarité affiché (voir app/rag/retriever.py).
+    reranker_model: str = Field(
+        default="cross-encoder/mmarco-mMiniLMv2-L12-H384-v1", alias="RERANKER_MODEL"
+    )
 
     rag_chunk_max_tokens: int = Field(default=200, alias="RAG_CHUNK_MAX_TOKENS")
     rag_chunk_overlap: int = Field(default=20, alias="RAG_CHUNK_OVERLAP")
     rag_similarity_threshold: float = Field(default=0.2, alias="RAG_SIMILARITY_THRESHOLD")
+    rag_rerank_enabled: bool = Field(default=True, alias="RAG_RERANK_ENABLED")
 
 
 @lru_cache

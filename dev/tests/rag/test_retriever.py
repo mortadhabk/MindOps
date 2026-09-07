@@ -1,6 +1,6 @@
 from app.rag.ingestion import ingest_document
 from app.rag.retriever import search
-from tests.rag.fakes import FakeEmbeddingProvider
+from tests.rag.fakes import FakeEmbeddingProvider, FakeReranker
 
 
 async def test_search_returns_exact_match_first(db_session):
@@ -105,6 +105,69 @@ async def test_search_without_ticket_key_does_not_add_exact_matches(db_session):
     )
 
     assert results == []
+
+
+async def test_search_with_reranker_reorders_without_changing_scores(db_session, monkeypatch):
+    # La base de test partage la vraie base de dev (voir conftest.py, db_session) : avec un
+    # reranker actif, le pool de candidats passe de `top_k` à RERANK_POOL_SIZE (20 par défaut),
+    # ce qui engloberait du vrai contenu déjà présent. Fixé à 2 ici pour isoler le test.
+    monkeypatch.setattr("app.rag.retriever.RERANK_POOL_SIZE", 2)
+
+    provider = FakeEmbeddingProvider()
+    await ingest_document(
+        db_session, source="exact", content="Le service de paiement echoue", provider=provider
+    )
+    await ingest_document(
+        db_session, source="other", content="Un sujet totalement different", provider=provider
+    )
+
+    baseline = await search(
+        db_session, "Le service de paiement echoue", provider, top_k=2, similarity_threshold=0.0
+    )
+    baseline_scores = {chunk.document.source: score for chunk, score in baseline}
+
+    reranked = await search(
+        db_session,
+        "Le service de paiement echoue",
+        provider,
+        top_k=2,
+        similarity_threshold=0.0,
+        reranker=FakeReranker(),
+    )
+    reranked_scores = {chunk.document.source: score for chunk, score in reranked}
+
+    # Le FakeReranker inverse l'ordre des candidats (voir tests/rag/fakes.py) : le deuxième
+    # résultat sémantique passe en tête. Les scores affichés (similarité cosinus), eux, ne
+    # bougent jamais — seul l'ordre change.
+    assert reranked_scores == baseline_scores
+    assert [c.document.source for c, _ in reranked] != [c.document.source for c, _ in baseline]
+    assert reranked[0][0].document.source == "other"
+
+
+async def test_search_ignores_reranker_when_rag_rerank_enabled_is_false(db_session):
+    from app.settings import store
+
+    provider = FakeEmbeddingProvider()
+    await ingest_document(
+        db_session, source="exact", content="Le service de paiement echoue", provider=provider
+    )
+    await ingest_document(
+        db_session, source="other", content="Un sujet totalement different", provider=provider
+    )
+    store._overrides["rag"] = {"rag_rerank_enabled": False}
+
+    results = await search(
+        db_session,
+        "Le service de paiement echoue",
+        provider,
+        top_k=2,
+        similarity_threshold=0.0,
+        reranker=FakeReranker(),
+    )
+
+    # Le réglage désactive le reranking même si un reranker est fourni : l'ordre cosinus original
+    # (le match exact en tête) est conservé.
+    assert results[0][0].document.source == "exact"
 
 
 async def test_search_filters_out_results_below_threshold(db_session):

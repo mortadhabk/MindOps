@@ -8,6 +8,7 @@ from app.agent.tools.send_email import SendEmailTool
 from app.core.database import async_session_factory
 from app.gating.models import ActionProposal, ActionStatus
 from app.rag.embeddings import get_embedding_provider
+from app.rag.reranking import get_reranker
 
 
 async def resume_agent_graph(proposal_id: int) -> None:
@@ -25,7 +26,10 @@ async def resume_agent_graph(proposal_id: int) -> None:
 
         provider = get_embedding_provider()
         llm = get_llm_client()
-        tools = [SearchKnowledgeTool(db=db, provider=provider), SendEmailTool()]
+        tools = [
+            SearchKnowledgeTool(db=db, provider=provider, reranker=get_reranker()),
+            SendEmailTool(),
+        ]
         if agent_memory.checkpointer is None:
             raise RuntimeError("Checkpointer non initialisé — init_checkpointer() n'a pas tourné.")
         graph = build_graph(llm, tools, agent_memory.checkpointer, db)

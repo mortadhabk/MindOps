@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { Trash2 } from "lucide-react";
 
 import type { JsonSchemaProperty } from "../lib/api";
@@ -41,6 +42,24 @@ export function DynamicSchemaField({
       </label>
       {property.type === "object" ? (
         <KeyValueEditor value={(value as Record<string, string>) ?? {}} onChange={onChange} />
+      ) : property.type === "boolean" ? (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={Boolean(value)}
+          onClick={() => onChange(!value)}
+          className={clsx(
+            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition",
+            value ? "bg-gradient-to-r from-indigo-500 to-sky-400" : "bg-white/10",
+          )}
+        >
+          <span
+            className={clsx(
+              "inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition",
+              value ? "translate-x-6" : "translate-x-1",
+            )}
+          />
+        </button>
       ) : isPassword ? (
         <input
           type="password"

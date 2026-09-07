@@ -11,8 +11,9 @@ from app.agent.router import get_checkpointer
 from app.core.database import get_db
 from app.main import app
 from app.rag.embeddings import get_embedding_provider
+from app.rag.reranking import get_reranker
 from tests.agent.fakes import ScriptedChatModel
-from tests.rag.fakes import FakeEmbeddingProvider
+from tests.rag.fakes import FakeEmbeddingProvider, FakeReranker
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +23,9 @@ def _override_dependencies(db_session: AsyncSession):
 
     app.dependency_overrides[get_db] = _get_db
     app.dependency_overrides[get_embedding_provider] = FakeEmbeddingProvider
+    # FakeReranker plutôt que le vrai cross-encoder : pas de poids ML à charger dans une suite de
+    # tests rapide (voir tests/rag/fakes.py).
+    app.dependency_overrides[get_reranker] = FakeReranker
     # MemorySaver plutôt que le checkpointer Postgres réel : les tests tournent hors du lifespan
     # FastAPI (voir app/main.py), donc son pool de connexions n'est jamais ouvert. Une seule
     # instance partagée par test (pas la classe brute) pour que l'historique survive entre

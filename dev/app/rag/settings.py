@@ -19,6 +19,12 @@ class RagSettingsSchema(BaseModel):
     rag_similarity_threshold: float = Field(
         ge=0, le=1, description="Score minimal pour qu'un résultat de recherche soit retenu"
     )
+    rag_rerank_enabled: bool = Field(
+        description=(
+            "Réordonne les résultats de la recherche vectorielle avec un cross-encoder avant de "
+            "les renvoyer — plus précis, un peu plus lent. N'affecte jamais le score affiché."
+        )
+    )
 
 
 def get_effective_rag_settings() -> RagSettingsSchema:
@@ -30,14 +36,20 @@ def get_effective_rag_settings() -> RagSettingsSchema:
         rag_similarity_threshold=override.get(
             "rag_similarity_threshold", base.rag_similarity_threshold
         ),
+        rag_rerank_enabled=override.get("rag_rerank_enabled", base.rag_rerank_enabled),
     )
 
 
 def _get_read_only() -> dict[str, Any]:
     base = get_settings()
     # Non éditable en V1 (décision actée, epic-9) : changer le modèle rendrait les vecteurs déjà
-    # stockés incompatibles (dimension différente) sans une ré-ingestion complète.
-    return {"embedding_provider": base.embedding_provider, "embedding_model": base.embedding_model}
+    # stockés incompatibles (dimension différente) sans une ré-ingestion complète. Même logique
+    # pour le reranker : son modèle est un détail d'implémentation, pas un réglage utilisateur.
+    return {
+        "embedding_provider": base.embedding_provider,
+        "embedding_model": base.embedding_model,
+        "reranker_model": base.reranker_model,
+    }
 
 
 register_section(

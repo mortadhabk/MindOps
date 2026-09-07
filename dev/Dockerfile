@@ -11,7 +11,8 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 
-RUN uv run --no-sync python -c "from app.rag.embeddings import get_embedding_provider; get_embedding_provider()"
+RUN uv run --no-sync python -c "from app.rag.embeddings import get_embedding_provider; get_embedding_provider()" \
+    && uv run --no-sync python -c "from app.rag.reranking import get_reranker; get_reranker()"
 
 EXPOSE 8000
 

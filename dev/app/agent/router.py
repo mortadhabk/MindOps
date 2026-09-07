@@ -21,6 +21,7 @@ from app.agent.tools.search_knowledge import SearchKnowledgeTool
 from app.agent.tools.send_email import SendEmailTool
 from app.core.database import get_db
 from app.rag.embeddings import EmbeddingProvider, get_embedding_provider
+from app.rag.reranking import Reranker, get_reranker
 
 router = APIRouter()
 
@@ -75,10 +76,14 @@ async def chat(
     provider: EmbeddingProvider = Depends(get_embedding_provider),
     llm: BaseChatModel = Depends(get_llm_client),
     checkpointer: BaseCheckpointSaver = Depends(get_checkpointer),
+    reranker: Reranker = Depends(get_reranker),
 ) -> StreamingResponse:
     conversation_id = payload.conversation_id or str(uuid.uuid4())
     await touch_conversation(db, conversation_id, payload.message)
-    tools = [SearchKnowledgeTool(db=db, provider=provider), SendEmailTool()]
+    tools = [
+        SearchKnowledgeTool(db=db, provider=provider, reranker=reranker),
+        SendEmailTool(),
+    ]
     app = build_graph(llm, tools, checkpointer, db)
 
     return StreamingResponse(

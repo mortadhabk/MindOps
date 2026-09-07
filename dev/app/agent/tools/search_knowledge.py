@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.tools.base import Tool
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.reranking.base import Reranker
 from app.rag.retriever import search as search_chunks
 
 
@@ -17,18 +18,31 @@ class SearchKnowledgeTool(Tool):
 
     name = "search_knowledge"
     description = (
-        "Cherche dans la base de connaissances les fragments les plus pertinents pour répondre "
-        "à une question factuelle. À utiliser avant de répondre sur un sujet du domaine."
+        "Cherche dans la base de connaissances les fragments les plus pertinents pour une "
+        "requête donnée. Rappelable plusieurs fois avec des angles différents (symptôme signalé, "
+        "nom du flux/module concerné, mots-clés techniques) pour croiser plusieurs sources — "
+        "tickets similaires (résolus ou en cours) et documents de spécifications — avant de "
+        "répondre. Une seule recherche superficielle ne suffit généralement pas à diagnostiquer "
+        "un problème."
     )
     args_schema = SearchKnowledgeArgs
 
-    def __init__(self, db: AsyncSession, provider: EmbeddingProvider, top_k: int = 5):
+    def __init__(
+        self,
+        db: AsyncSession,
+        provider: EmbeddingProvider,
+        top_k: int = 5,
+        reranker: Reranker | None = None,
+    ):
         self._db = db
         self._provider = provider
         self._top_k = top_k
+        self._reranker = reranker
 
     async def execute(self, *, query: str) -> str:
-        results = await search_chunks(self._db, query, self._provider, top_k=self._top_k)
+        results = await search_chunks(
+            self._db, query, self._provider, top_k=self._top_k, reranker=self._reranker
+        )
         if not results:
             return "Aucun fragment pertinent trouvé dans la base de connaissances."
         return "\n\n".join(

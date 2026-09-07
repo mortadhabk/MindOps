@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.rag.embeddings import EmbeddingProvider, get_embedding_provider
 from app.rag.ingestion import ingest_document
+from app.rag.reranking import Reranker, get_reranker
 from app.rag.retriever import search as search_chunks
 from app.rag.schemas import DocumentIn, IngestResponse, SearchResponse, SearchResultItem
 
@@ -37,8 +38,10 @@ async def ingest(
     response_model=SearchResponse,
     summary="Rechercher les fragments les plus pertinents",
     description=(
-        "Calcule l'embedding de la question et renvoie les `top_k` fragments les plus proches "
-        "par similarité cosinus, filtrés par le seuil `RAG_SIMILARITY_THRESHOLD`."
+        "Calcule l'embedding de la question, présélectionne les fragments les plus proches par "
+        "similarité cosinus (filtrés par le seuil `RAG_SIMILARITY_THRESHOLD`), puis les "
+        "réordonne avec un cross-encoder si le reranking est activé avant de renvoyer les "
+        "`top_k` premiers. Le score renvoyé reste la similarité cosinus d'origine."
     ),
 )
 async def search_endpoint(
@@ -46,8 +49,9 @@ async def search_endpoint(
     top_k: int = Query(5, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     provider: EmbeddingProvider = Depends(get_embedding_provider),
+    reranker: Reranker = Depends(get_reranker),
 ) -> SearchResponse:
-    results = await search_chunks(db, q, provider, top_k=top_k)
+    results = await search_chunks(db, q, provider, top_k=top_k, reranker=reranker)
     return SearchResponse(
         query=q,
         results=[
