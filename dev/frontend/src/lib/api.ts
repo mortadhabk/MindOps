@@ -70,6 +70,7 @@ export type ChatSseEvent =
   | { type: "start"; conversationId: string }
   | { type: "delta"; text: string }
   | { type: "pending_approval"; conversationId: string; proposalId: number }
+  | { type: "error"; message: string }
   | { type: "done" };
 
 function parseSseChunk(raw: string): ChatSseEvent {
@@ -92,6 +93,8 @@ function parseSseChunk(raw: string): ChatSseEvent {
         conversationId: payload.conversation_id,
         proposalId: payload.proposal_id,
       };
+    case "error":
+      return { type: "error", message: payload.message ?? "Erreur inconnue côté agent." };
     default:
       return { type: "done" };
   }

@@ -102,6 +102,8 @@ def test_config_schema_exposes_vendors_as_enum():
         "openai",
         "deepseek",
         "kimi",
+        "openrama",
+        "llmproxy",
         "anthropic",
     }
 
@@ -115,7 +117,15 @@ def test_config_schema_marks_api_key_as_a_password_field():
 def test_read_only_exposes_the_full_vendor_catalog_for_the_frontend():
     read_only = agent_settings._get_read_only()
 
-    assert set(read_only["vendors"]) == {"ollama", "openai", "deepseek", "kimi", "anthropic"}
+    assert set(read_only["vendors"]) == {
+        "ollama",
+        "openai",
+        "deepseek",
+        "kimi",
+        "openrama",
+        "llmproxy",
+        "anthropic",
+    }
     assert "deepseek-chat" in read_only["vendors"]["deepseek"]["known_models"]
     assert read_only["vendors"]["ollama"]["default_base_url"] is None
 
@@ -126,7 +136,7 @@ def test_schema_rejects_an_unknown_vendor():
 
 
 def test_schema_accepts_every_cataloged_vendor():
-    for vendor_key in ("ollama", "openai", "deepseek", "kimi", "anthropic"):
+    for vendor_key in ("ollama", "openai", "deepseek", "kimi", "openrama", "llmproxy", "anthropic"):
         AgentSettingsSchema(llm_vendor=vendor_key, llm_model="some-model")
 
 

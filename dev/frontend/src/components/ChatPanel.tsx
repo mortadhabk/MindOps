@@ -42,7 +42,7 @@ export function ChatPanel({ onProposal }: { onProposal: () => void }) {
           {conversationId ? conversationId.slice(0, 8) : "nouvelle conversation"}
         </span>
       }
-      className="h-[560px]"
+      className="h-[70vh] min-h-[560px]"
     >
       <div className="flex h-full flex-col">
         <div ref={scrollRef} className="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-5 py-4">

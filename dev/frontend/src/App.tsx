@@ -1,11 +1,9 @@
 import clsx from "clsx";
 import { useCallback, useState } from "react";
 
-import { AuditLogPanel } from "./components/AuditLogPanel";
+import { AdminView } from "./admin/AdminView";
 import { ChatPanel } from "./components/ChatPanel";
-import { GatingQueue } from "./components/GatingQueue";
 import { type ActiveTab, Header } from "./components/Header";
-import { SettingsView } from "./settings/SettingsView";
 import { StudioView } from "./studio/StudioView";
 
 export default function App() {
@@ -26,12 +24,8 @@ export default function App() {
       >
         <Header activeTab={activeTab} onTabChange={setActiveTab} />
         {activeTab === "assistant" && (
-          <main className="grid gap-5 px-6 pb-10 lg:grid-cols-[1.35fr_1fr]">
+          <main className="mx-auto max-w-3xl px-6 pb-10">
             <ChatPanel onProposal={bumpRefresh} />
-            <div className="flex flex-col gap-5">
-              <GatingQueue refreshSignal={refreshSignal} />
-              <AuditLogPanel refreshSignal={refreshSignal} />
-            </div>
           </main>
         )}
         {activeTab === "studio" && (
@@ -39,9 +33,9 @@ export default function App() {
             <StudioView />
           </main>
         )}
-        {activeTab === "settings" && (
+        {activeTab === "admin" && (
           <main className="px-6 pb-10">
-            <SettingsView />
+            <AdminView refreshSignal={refreshSignal} />
           </main>
         )}
       </div>

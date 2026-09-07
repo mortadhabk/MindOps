@@ -31,6 +31,13 @@ MAX_ITERATIONS = 5
 RECURSION_LIMIT = MAX_ITERATIONS * 2
 
 
+class AgentStreamError(Exception):
+    """Erreur survenue en cours de streaming (ex. fournisseur LLM injoignable ou clé
+    refusée) — portée jusqu'à `router._sse_events()` pour émettre un `event: error` SSE
+    propre plutôt que de couper le flux en silence (le front restait alors bloqué en
+    "pending" indéfiniment, sans aucun signal)."""
+
+
 def build_graph(
     llm: BaseChatModel,
     tools: Sequence[Tool],
@@ -165,12 +172,31 @@ async def _run_sensitive_tool(
     return result
 
 
+def _chunk_text(content: str | list) -> str:
+    # OpenAI renvoie chunk.content en str, mais Anthropic (et d'autres) le renvoient en liste de
+    # blocs ({"type": "text", "text": ...}, parfois {"type": "tool_use", ...} à ignorer) — sans
+    # cette extraction, un bloc list finit stringifié tel quel côté front ("[object Object]").
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+            if not isinstance(block, dict) or block.get("type") == "text"
+        )
+    return ""
+
+
 async def stream_chat(app, *, conversation_id: str, user_message: str) -> AsyncIterator[str]:
     config = {"configurable": {"thread_id": conversation_id}, "recursion_limit": RECURSION_LIMIT}
     inputs = {"messages": [HumanMessage(content=user_message)]}
     try:
         async for chunk, metadata in app.astream(inputs, config=config, stream_mode="messages"):
             if metadata.get("langgraph_node") == "call_model" and chunk.content:
-                yield chunk.content
+                text = _chunk_text(chunk.content)
+                if text:
+                    yield text
     except GraphRecursionError:
         yield "\n\n[Erreur : nombre maximum d'itérations atteint sans réponse finale.]"
+    except Exception as exc:
+        raise AgentStreamError(str(exc)) from exc

@@ -5,7 +5,13 @@ import { useGatingQueue } from "../hooks/useGatingQueue";
 import { Panel } from "./Panel";
 import { EmptyState, IconButton, RefreshButton } from "./ui";
 
-export function GatingQueue({ refreshSignal }: { refreshSignal: number }) {
+export function GatingQueue({
+  refreshSignal,
+  className = "h-[260px]",
+}: {
+  refreshSignal: number;
+  className?: string;
+}) {
   const { proposals, decide, decidingId, refresh } = useGatingQueue(8000, refreshSignal);
 
   return (
@@ -13,7 +19,7 @@ export function GatingQueue({ refreshSignal }: { refreshSignal: number }) {
       title="File de validation"
       icon={<ShieldAlert className="h-4 w-4 text-amber-400" />}
       actions={<RefreshButton onClick={refresh} />}
-      className="h-[260px]"
+      className={className}
     >
       <div className="scrollbar-thin h-full space-y-2 overflow-y-auto p-4">
         {proposals.length === 0 && <EmptyState label="Aucune action en attente" />}

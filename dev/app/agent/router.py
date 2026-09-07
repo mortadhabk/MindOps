@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.llm_client import get_llm_client
 from app.agent.memory import checkpointer
-from app.agent.orchestrator import build_graph, stream_chat
+from app.agent.orchestrator import AgentStreamError, build_graph, stream_chat
 from app.agent.schemas import ChatRequest
 from app.agent.tools.search_knowledge import SearchKnowledgeTool
 from app.agent.tools.send_email import SendEmailTool
@@ -21,8 +21,15 @@ router = APIRouter()
 
 async def _sse_events(app, *, conversation_id: str, message: str) -> AsyncIterator[str]:
     yield f"event: start\ndata: {json.dumps({'conversation_id': conversation_id})}\n\n"
-    async for token in stream_chat(app, conversation_id=conversation_id, user_message=message):
-        yield f"event: delta\ndata: {json.dumps({'text': token})}\n\n"
+    try:
+        async for token in stream_chat(app, conversation_id=conversation_id, user_message=message):
+            yield f"event: delta\ndata: {json.dumps({'text': token})}\n\n"
+    except AgentStreamError as exc:
+        # Sans ce garde-fou, une panne fournisseur (clé refusée, réseau, ...) coupait le flux
+        # SSE en silence : le front restait en "pending" indéfiniment, faute de `done` ou
+        # `pending_approval` pour le signaler (voir conversation support).
+        yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+        return
 
     # Le graphe peut s'être arrêté normalement OU s'être interrompu (Epic 4, outil sensible
     # en attente de validation) — dans ce second cas, astream() se termine sans erreur, donc

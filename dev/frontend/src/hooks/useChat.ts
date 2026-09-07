@@ -53,6 +53,9 @@ export function useChat(onProposal: () => void) {
               patch((m) => ({ ...m, pending: false }));
               onProposal();
               break;
+            case "error":
+              patch((m) => ({ ...m, pending: false, text: `[erreur : ${event.message}]` }));
+              break;
           }
         });
       } catch (error) {

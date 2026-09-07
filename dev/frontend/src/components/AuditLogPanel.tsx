@@ -13,7 +13,13 @@ const FILTERS = [
   { value: "gating.decision", label: "Décisions" },
 ];
 
-export function AuditLogPanel({ refreshSignal }: { refreshSignal: number }) {
+export function AuditLogPanel({
+  refreshSignal,
+  className = "h-[300px]",
+}: {
+  refreshSignal: number;
+  className?: string;
+}) {
   const { logs, filter, setFilter, refresh } = useAuditLog(8000, refreshSignal);
 
   return (
@@ -21,7 +27,7 @@ export function AuditLogPanel({ refreshSignal }: { refreshSignal: number }) {
       title="Journal d'audit"
       icon={<ScrollText className="h-4 w-4 text-sky-400" />}
       actions={<RefreshButton onClick={refresh} />}
-      className="h-[300px]"
+      className={className}
     >
       <div className="flex h-full flex-col">
         <div className="flex flex-wrap gap-1.5 border-b border-white/10 px-4 py-2.5">

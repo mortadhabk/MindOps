@@ -4,18 +4,18 @@ import { Sparkles } from "lucide-react";
 import { fetchHealth } from "../lib/api";
 import { TabSwitch } from "./ui";
 
-export type ActiveTab = "assistant" | "studio" | "settings";
+export type ActiveTab = "assistant" | "studio" | "admin";
 
 const TAB_OPTIONS: { value: ActiveTab; label: string }[] = [
   { value: "assistant", label: "Assistant" },
   { value: "studio", label: "Studio" },
-  { value: "settings", label: "Paramètres" },
+  { value: "admin", label: "Admin" },
 ];
 
 const TAB_SUBTITLES: Record<ActiveTab, string> = {
-  assistant: "Chat, file de validation et journal d'audit — en un seul endroit.",
+  assistant: "La discussion avec l'agent, sans distraction.",
   studio: "Glisser une source sur le canvas pour la relier à l'Orchestrateur (Epic 8).",
-  settings: "Pilote tous les réglages non-secrets de l'agent, sans redémarrage (Epic 9).",
+  admin: "File de validation, journal d'audit et paramètres, chacun dans sa propre section.",
 };
 
 interface HeaderProps {
