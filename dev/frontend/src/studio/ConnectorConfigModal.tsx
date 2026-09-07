@@ -172,6 +172,20 @@ export function ConnectorConfigModal({
                   placeholder="Coller le texte à ingérer, ou déposer un fichier ci-dessus…"
                   className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-xs text-slate-100 focus:border-indigo-400/50 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
                 />
+              ) : prop.enum && prop.enum.length > 0 ? (
+                <select
+                  value={values[key] ?? ""}
+                  onChange={(event) => setValue(key, event.target.value)}
+                  required={required.has(key)}
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-100 focus:border-indigo-400/50 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
+                >
+                  {!required.has(key) && <option value="">—</option>}
+                  {prop.enum.map((option) => (
+                    <option key={option} value={option} className="bg-surface-900">
+                      {option}
+                    </option>
+                  ))}
+                </select>
               ) : (
                 <input
                   value={values[key] ?? ""}

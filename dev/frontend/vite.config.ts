@@ -9,6 +9,12 @@ export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === "build" ? "/demo/" : "/",
   server: {
+    // 5173 (le port par défaut) tombe régulièrement dans une plage de ports que Windows exclut
+    // dynamiquement pour le NAT Hyper-V (souvent après un redémarrage de Docker Desktop/WSL2) —
+    // `netsh interface ipv4 show excludedportrange protocol=tcp` le confirme. 5400 est en dehors
+    // des plages observées. Si ça se reproduit avec CE port aussi, relancer avec `-- --port N`
+    // ou réinitialiser le service : `net stop winnat && net start winnat` (PowerShell admin).
+    port: 5400,
     proxy: {
       "/agent": API_TARGET,
       "/gating": API_TARGET,
