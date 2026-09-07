@@ -133,6 +133,34 @@ export async function streamChat(
   }
 }
 
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
+export async function fetchConversations(): Promise<ConversationSummary[]> {
+  const response = await fetch("/agent/conversations");
+  if (!response.ok) throw new Error(`GET /agent/conversations -> ${response.status}`);
+  return response.json();
+}
+
+export async function fetchConversationMessages(
+  conversationId: string,
+): Promise<ConversationMessage[]> {
+  const response = await fetch(`/agent/conversations/${conversationId}/messages`);
+  if (!response.ok) {
+    throw new Error(`GET /agent/conversations/${conversationId}/messages -> ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchHealth(): Promise<boolean> {
   try {
     const response = await fetch("/health");

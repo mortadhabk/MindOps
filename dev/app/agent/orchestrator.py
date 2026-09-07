@@ -172,7 +172,7 @@ async def _run_sensitive_tool(
     return result
 
 
-def _chunk_text(content: str | list) -> str:
+def extract_message_text(content: str | list) -> str:
     # OpenAI renvoie chunk.content en str, mais Anthropic (et d'autres) le renvoient en liste de
     # blocs ({"type": "text", "text": ...}, parfois {"type": "tool_use", ...} à ignorer) — sans
     # cette extraction, un bloc list finit stringifié tel quel côté front ("[object Object]").
@@ -193,7 +193,7 @@ async def stream_chat(app, *, conversation_id: str, user_message: str) -> AsyncI
     try:
         async for chunk, metadata in app.astream(inputs, config=config, stream_mode="messages"):
             if metadata.get("langgraph_node") == "call_model" and chunk.content:
-                text = _chunk_text(chunk.content)
+                text = extract_message_text(chunk.content)
                 if text:
                     yield text
     except GraphRecursionError:

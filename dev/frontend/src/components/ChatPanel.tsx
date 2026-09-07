@@ -1,12 +1,12 @@
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 
-import { useChat } from "../hooks/useChat";
+import type { useChat } from "../hooks/useChat";
 import { MessageBubble } from "./MessageBubble";
 import { Panel } from "./Panel";
 
-export function ChatPanel({ onProposal }: { onProposal: () => void }) {
-  const { messages, send, isStreaming, conversationId } = useChat(onProposal);
+export function ChatPanel({ chat }: { chat: ReturnType<typeof useChat> }) {
+  const { messages, send, isStreaming, conversationId } = chat;
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.agent.memory import init_checkpointer
 from app.agent.resume_service import resume_agent_graph
 from app.api.router import router as api_router
 from app.config import get_settings
@@ -26,6 +27,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # depuis la base directement — voir management/epic-9-parametrage-agent.md, section 4.2.
     async with async_session_factory() as db:
         await settings_store.load_overrides(db)
+
+    # Ouvre le pool de connexions du checkpointer Postgres (app/agent/memory.py) et crée ses
+    # tables si besoin — une seule fois au démarrage, jamais par requête.
+    await init_checkpointer()
 
     # Un override de niveau de log posé avant ce démarrage (redémarrage du conteneur) doit
     # s'appliquer dès maintenant, pas seulement à la prochaine sauvegarde depuis l'UI.

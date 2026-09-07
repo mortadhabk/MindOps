@@ -3,9 +3,11 @@ import json
 import pytest
 from httpx import ASGITransport, AsyncClient
 from langchain_core.messages import AIMessage
+from langgraph.checkpoint.memory import MemorySaver
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.llm_client import get_llm_client
+from app.agent.router import get_checkpointer
 from app.core.database import get_db
 from app.main import app
 from app.rag.embeddings import get_embedding_provider
@@ -20,6 +22,12 @@ def _override_dependencies(db_session: AsyncSession):
 
     app.dependency_overrides[get_db] = _get_db
     app.dependency_overrides[get_embedding_provider] = FakeEmbeddingProvider
+    # MemorySaver plutôt que le checkpointer Postgres réel : les tests tournent hors du lifespan
+    # FastAPI (voir app/main.py), donc son pool de connexions n'est jamais ouvert. Une seule
+    # instance partagée par test (pas la classe brute) pour que l'historique survive entre
+    # plusieurs appels HTTP d'un même test, comme le ferait le singleton réel en production.
+    test_checkpointer = MemorySaver()
+    app.dependency_overrides[get_checkpointer] = lambda: test_checkpointer
     yield
     app.dependency_overrides.clear()
 
@@ -83,3 +91,48 @@ async def test_chat_answers_directly_without_tool_call():
         assert response.status_code == 200
         full_text = await _parse_sse_deltas(response.text)
         assert full_text == "Bonjour !"
+
+
+async def test_list_conversations_returns_most_recent_first(db_session: AsyncSession):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        _override_llm(ScriptedChatModel(responses=[AIMessage(content="Bonjour !")]))
+        await client.post("/agent/chat", json={"conversation_id": "conv-a", "message": "salut"})
+        _override_llm(ScriptedChatModel(responses=[AIMessage(content="Ça marche.")]))
+        await client.post(
+            "/agent/chat", json={"conversation_id": "conv-b", "message": "ça marche ?"}
+        )
+
+        response = await client.get("/agent/conversations")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert [conv["id"] for conv in body] == ["conv-b", "conv-a"]
+        assert body[0]["title"] == "ça marche ?"
+
+
+async def test_get_conversation_messages_returns_user_and_assistant_turns(
+    db_session: AsyncSession,
+):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        _override_llm(ScriptedChatModel(responses=[AIMessage(content="Bonjour !")]))
+        await client.post(
+            "/agent/chat", json={"conversation_id": "conv-history", "message": "salut"}
+        )
+
+        response = await client.get("/agent/conversations/conv-history/messages")
+
+        assert response.status_code == 200
+        assert response.json() == [
+            {"role": "user", "text": "salut"},
+            {"role": "assistant", "text": "Bonjour !"},
+        ]
+
+
+async def test_get_conversation_messages_404_for_unknown_conversation():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/agent/conversations/does-not-exist/messages")
+
+        assert response.status_code == 404

@@ -17,6 +17,12 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
 
+    @property
+    def psycopg_database_url(self) -> str:
+        # Le checkpointer LangGraph Postgres (app/agent/memory.py) parle psycopg3, pas asyncpg —
+        # même base, juste un DSN sans le qualificatif de driver SQLAlchemy.
+        return self.database_url.replace("postgresql+asyncpg://", "postgresql://")
+
     # Valeurs de démarrage avant toute personnalisation depuis l'onglet Paramètres (Epic 9,
     # interface-first) : le fournisseur/modèle/clé effectifs vivent ensuite dans `app_settings`
     # (base de données, clé chiffrée) — voir app/agent/settings.py.

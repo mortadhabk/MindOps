@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { generateId } from "../lib/id";
-import { streamChat } from "../lib/api";
+import { fetchConversationMessages, streamChat } from "../lib/api";
 
 export interface ChatMessage {
   id: string;
@@ -15,6 +15,26 @@ export function useChat(onProposal: () => void) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+
+  const startNewConversation = useCallback(() => {
+    conversationIdRef.current = null;
+    setConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const openConversation = useCallback(async (id: string) => {
+    conversationIdRef.current = id;
+    setConversationId(id);
+    setMessages([{ id: generateId(), role: "assistant", text: "", pending: true }]);
+    try {
+      const history = await fetchConversationMessages(id);
+      setMessages(history.map((m) => ({ id: generateId(), role: m.role, text: m.text })));
+    } catch (error) {
+      setMessages([
+        { id: generateId(), role: "assistant", text: `[erreur : ${(error as Error).message}]` },
+      ]);
+    }
+  }, []);
 
   const send = useCallback(
     async (text: string) => {
@@ -35,6 +55,7 @@ export function useChat(onProposal: () => void) {
             case "start":
               conversationIdRef.current = event.conversationId;
               setConversationId(event.conversationId);
+              onProposal();
               break;
             case "delta":
               patch((m) => ({ ...m, text: m.text + event.text }));
@@ -67,5 +88,12 @@ export function useChat(onProposal: () => void) {
     [onProposal],
   );
 
-  return { messages, send, isStreaming, conversationId };
+  return {
+    messages,
+    send,
+    isStreaming,
+    conversationId,
+    startNewConversation,
+    openConversation,
+  };
 }

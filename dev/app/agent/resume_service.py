@@ -1,7 +1,7 @@
 from langgraph.types import Command
 
+from app.agent import memory as agent_memory
 from app.agent.llm_client import get_llm_client
-from app.agent.memory import checkpointer
 from app.agent.orchestrator import RECURSION_LIMIT, build_graph
 from app.agent.tools.search_knowledge import SearchKnowledgeTool
 from app.agent.tools.send_email import SendEmailTool
@@ -26,7 +26,9 @@ async def resume_agent_graph(proposal_id: int) -> None:
         provider = get_embedding_provider()
         llm = get_llm_client()
         tools = [SearchKnowledgeTool(db=db, provider=provider), SendEmailTool()]
-        graph = build_graph(llm, tools, checkpointer, db)
+        if agent_memory.checkpointer is None:
+            raise RuntimeError("Checkpointer non initialisé — init_checkpointer() n'a pas tourné.")
+        graph = build_graph(llm, tools, agent_memory.checkpointer, db)
         config = {
             "configurable": {"thread_id": proposal.conversation_id},
             "recursion_limit": RECURSION_LIMIT,
