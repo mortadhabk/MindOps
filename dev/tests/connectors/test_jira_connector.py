@@ -27,6 +27,8 @@ CLOUD_ISSUE = {
         "issuetype": {"name": "Bug"},
         "labels": ["paiement"],
         "assignee": {"displayName": "Alice"},
+        "reporter": {"displayName": "Bob"},
+        "priority": {"name": "Haute"},
         "attachment": [
             {
                 "filename": "notes.txt",
@@ -116,6 +118,9 @@ async def test_fetch_items_cloud_converts_adf_and_includes_comments_and_attachme
     assert "Corrigé en 2.3.1" in text
     assert "Contenu du fichier joint" in text
     assert "capture.png (non traité, format non pris en charge)" in text
+    assert "Priorité : Haute" in text
+    assert "Rapporté par : Bob" in text
+    assert "Assigné à : Alice" in text
 
 
 async def test_to_document_builds_a_stable_source_identifier(monkeypatch):

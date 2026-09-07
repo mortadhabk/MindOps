@@ -77,7 +77,10 @@ async def search_issues(
                 "jql": jql,
                 "startAt": start_at,
                 "maxResults": PAGE_SIZE,
-                "fields": "summary,description,status,issuetype,labels,assignee,attachment",
+                "fields": (
+                    "summary,description,status,issuetype,labels,assignee,reporter,priority,"
+                    "attachment"
+                ),
             },
         )
         _raise_for_status(response)

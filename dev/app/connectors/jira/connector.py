@@ -86,6 +86,8 @@ class JiraConnector(Connector):
         issue_type = (fields.get("issuetype") or {}).get("name", "")
         labels = fields.get("labels") or []
         assignee = (fields.get("assignee") or {}).get("displayName")
+        reporter = (fields.get("reporter") or {}).get("displayName")
+        priority = (fields.get("priority") or {}).get("name")
 
         raw_comments = await jira_client.fetch_comments(
             http, api_version=api_version, issue_key=key
@@ -97,8 +99,12 @@ class JiraConnector(Connector):
         attachments_text = await self._extract_attachments(http, fields.get("attachment") or [])
 
         parts = [f"[{key}] {summary}", f"Statut : {status} — Type : {issue_type}"]
+        if priority:
+            parts.append(f"Priorité : {priority}")
         if labels:
             parts.append(f"Labels : {', '.join(labels)}")
+        if reporter:
+            parts.append(f"Rapporté par : {reporter}")
         if assignee:
             parts.append(f"Assigné à : {assignee}")
         if description:
