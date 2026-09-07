@@ -14,8 +14,8 @@ const TAB_OPTIONS: { value: ActiveTab; label: string }[] = [
 
 const TAB_SUBTITLES: Record<ActiveTab, string> = {
   assistant: "La discussion avec l'agent, sans distraction.",
-  studio: "Glisser une source sur le canvas pour la relier à l'Orchestrateur (Epic 8).",
-  admin: "File de validation, journal d'audit et paramètres, chacun dans sa propre section.",
+  studio: "Brancher et configurer les sources de connaissance, identifiants inclus.",
+  admin: "Un objectif par page : validation, audit, agent, RAG, confiance, journalisation.",
 };
 
 interface HeaderProps {

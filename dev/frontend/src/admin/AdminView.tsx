@@ -1,21 +1,29 @@
 import { type ReactNode, useState } from "react";
-import { Settings, ScrollText, ShieldAlert } from "lucide-react";
+import { Bot, Database, ScrollText, ShieldAlert, ShieldCheck, Terminal } from "lucide-react";
 import clsx from "clsx";
 
 import { AuditLogPanel } from "../components/AuditLogPanel";
 import { GatingQueue } from "../components/GatingQueue";
 import { SettingsView } from "../settings/SettingsView";
 
-type AdminSection = "gating" | "audit" | "settings";
+type AdminSection = "validation" | "audit" | "agent" | "rag" | "gating-policy" | "logging";
 
+/** Une entrée = un objectif précis (jamais deux réglages sans rapport sur le même écran) —
+ * chaque section de paramétrage (Epic 9) obtient sa propre page plutôt que d'être noyée dans une
+ * grille unique "Paramètres" fourre-tout. Les identifiants de connecteurs (GitHub/SharePoint/
+ * Jira) ne vivent pas ici : ils vivent dans le Studio, au plus près de l'endroit où on en a
+ * besoin (voir StudioView.tsx), pas dans l'Admin générique. */
 const SECTIONS: { value: AdminSection; label: string; icon: ReactNode }[] = [
-  { value: "gating", label: "File de validation", icon: <ShieldAlert className="h-4 w-4" /> },
+  { value: "validation", label: "File de validation", icon: <ShieldAlert className="h-4 w-4" /> },
   { value: "audit", label: "Journal d'audit", icon: <ScrollText className="h-4 w-4" /> },
-  { value: "settings", label: "Paramètres", icon: <Settings className="h-4 w-4" /> },
+  { value: "agent", label: "Agent (LLM)", icon: <Bot className="h-4 w-4" /> },
+  { value: "rag", label: "Base de connaissances (RAG)", icon: <Database className="h-4 w-4" /> },
+  { value: "gating-policy", label: "Politique de confiance", icon: <ShieldCheck className="h-4 w-4" /> },
+  { value: "logging", label: "Journalisation", icon: <Terminal className="h-4 w-4" /> },
 ];
 
 export function AdminView({ refreshSignal }: { refreshSignal: number }) {
-  const [section, setSection] = useState<AdminSection>("gating");
+  const [section, setSection] = useState<AdminSection>("validation");
 
   return (
     <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
@@ -38,13 +46,16 @@ export function AdminView({ refreshSignal }: { refreshSignal: number }) {
         ))}
       </nav>
       <div>
-        {section === "gating" && (
+        {section === "validation" && (
           <GatingQueue refreshSignal={refreshSignal} className="h-[calc(100vh-220px)] min-h-[420px]" />
         )}
         {section === "audit" && (
           <AuditLogPanel refreshSignal={refreshSignal} className="h-[calc(100vh-220px)] min-h-[420px]" />
         )}
-        {section === "settings" && <SettingsView />}
+        {section === "agent" && <SettingsView only={["agent"]} />}
+        {section === "rag" && <SettingsView only={["rag"]} />}
+        {section === "gating-policy" && <SettingsView only={["gating"]} />}
+        {section === "logging" && <SettingsView only={["logging"]} />}
       </div>
     </div>
   );

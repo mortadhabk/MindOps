@@ -3,8 +3,15 @@ import { RefreshCw } from "lucide-react";
 import { useSettingsSections } from "../hooks/useSettingsSections";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 
-export function SettingsView() {
+interface SettingsViewProps {
+  /** Limite l'affichage à ces clés de section (une page = un objectif précis) — omis, affiche
+   * tout (usage historique, non recommandé pour une nouvelle page). */
+  only?: string[];
+}
+
+export function SettingsView({ only }: SettingsViewProps) {
   const { sections, loading, error, refresh, update, reset } = useSettingsSections();
+  const visible = only ? sections.filter((section) => only.includes(section.key)) : sections;
 
   if (loading && sections.length === 0) {
     return <p className="px-1 py-8 text-center text-sm text-slate-500">Chargement des paramètres…</p>;
@@ -27,8 +34,8 @@ export function SettingsView() {
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      {sections.map((section) => (
+    <div className={only?.length === 1 ? "mx-auto max-w-xl" : "grid gap-5 sm:grid-cols-2"}>
+      {visible.map((section) => (
         <SettingsSectionCard key={section.key} section={section} onSave={update} onReset={reset} />
       ))}
     </div>
